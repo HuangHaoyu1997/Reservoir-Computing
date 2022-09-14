@@ -1,17 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os, time, torch, ray, pickle, random, torchvision
+import os, time, torch, ray, pickle
 from scipy.linalg import pinv
-import torchvision.transforms as transforms
-from sklearn.metrics import accuracy_score
-from sklearn.linear_model import LogisticRegression
+
+
 from utils import encoding, A_initial, activation
 import warnings
 
 warnings.filterwarnings("ignore")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-
 
 class RC:
     '''
@@ -38,7 +35,6 @@ class RC:
         self.p = p
         self.gamma = gamma
         self.reset()
-    
     
         
     def reset(self,):
@@ -85,7 +81,6 @@ class RC:
         self.mem = mem
         return spike
     
-    
     def softmax(self, x):
         return np.exp(x)/np.exp(x).sum()
     
@@ -111,167 +106,6 @@ class RC:
         y = np.matmul(self.W_out, r)
         y = self.softmax(y)
         return r, y, np.array(spike_train)
-
-def readout_sk(X_train, 
-               X_validation, 
-               # X_test, 
-               y_train, 
-               y_validation, 
-               # y_test,
-               ):
-    '''
-    X_train: shape(r_dim, num)
-    y_train: shape(num, )
-    
-    accuracy_score返回分类精度,最高=1
-    '''
-    lr = LogisticRegression(solver='lbfgs',
-                            multi_class='multinomial',
-                            verbose=False,
-                            max_iter=200,
-                            n_jobs=-1,
-                            
-                            )
-    lr.fit(X_train.T, y_train.T)
-    y_train_predictions = lr.predict(X_train.T)
-    y_validation_predictions = lr.predict(X_validation.T)
-    # y_test_predictions = lr.predict(X_test.T)
-    
-    
-    return accuracy_score(y_train_predictions, y_train.T), \
-            accuracy_score(y_validation_predictions, y_validation.T), \
-            # accuracy_score(y_test_predictions, y_test.T)
-
-
-
-# @ray.remote
-def inference(model:RC,
-              train_loader,
-              frames
-              ):
-    '''
-    给定数据集和模型, 推断reservoir state vector
-    '''
-    rs = []
-    start_time = time.time()
-    labels = []
-    spikes = []
-    for i, (image, label) in enumerate(train_loader):
-        # static img -> random firing sequence
-        image = encoding(image.squeeze(), frames) # shape=(30,784)
-        
-        # spike.shape (frame, N_hid)=(5, 5000)
-        r, y, spike = model.forward(image)
-        spike_sum = spike.sum(0)
-        
-        # label_ = torch.zeros(batch_size, 10).scatter_(1, label.view(-1, 1), 1).squeeze().numpy()
-        # loss = cross_entropy(label_, outputs)
-        
-        rs.append(r)
-        spikes.append(spike_sum)
-        labels.append(label.item())
-        
-    print('Time elasped:', time.time() - start_time)
-    return np.array(rs), np.array(spikes), np.array(labels)
-
-def learn(model, train_loader, frames):
-    
-    # rs.shape (500, 1000)
-    # labels.shape (500,)
-    rs, spikes, labels = inference(model,
-                            train_loader,
-                            frames,
-                            )
-    # print(spikes.shape, labels.shape)
-    train_rs = spikes[:300]
-    train_label = labels[:300]
-    test_rs = spikes[300:]
-    test_label = labels[300:]
-    # val_rs = spikes[400:]
-    # val_label = labels[400:]
-    tr_score, val_score, = readout_sk(train_rs.T, 
-                                    #   val_rs.T, 
-                                      test_rs.T, 
-                                      train_label, 
-                                    #   val_label, 
-                                      test_label)
-    print(tr_score, val_score)
-    return val_score
-
-
-'''
-correct = 0
-total = 0
-for batch_idx, (inputs, targets) in enumerate(test_loader):
-    inputs = encoding(inputs.squeeze(), frames=frames) # shape=(30,784)
-    outputs, _ = model.forward(inputs)
-    labels_ = torch.zeros(batch_size, 10).scatter_(1, targets.view(-1, 1), 1).squeeze().numpy()
-    loss = cross_entropy(labels_, outputs)
-    predicted = outputs.argmax()
-    total += float(targets.size(0))
-    correct += float(predicted==targets.item())
-    if batch_idx %100 ==0:
-        acc = 100. * float(correct) / float(total)
-        print(batch_idx, len(test_loader),' Acc: %.5f' % acc)
-
-print('Iters:', epoch,'\n\n\n')
-print('Test Accuracy of the model on the 10000 test images: %.3f' % (100 * correct / total))
-acc = 100. * float(correct) / float(total)
-acc_record.append(acc)
-if epoch % 5 == 0:
-    print(acc)
-    print('Saving..')
-    state = {
-        'net': model.state_dict(),
-        'acc': acc,
-        'epoch': epoch,
-        'acc_record': acc_record,
-    }
-    if not os.path.isdir('checkpoint'):
-        os.mkdir('checkpoint')
-    torch.save(state, './checkpoint/ckpt' + names + '.t7')
-    best_acc = acc
-'''
-
-
-def MNIST_generation(train_num=1000, test_num=250, batch_size=1):
-    '''
-    生成随机编码的MNIST动态数据集
-    train_num: 训练集样本数
-    '''
-    
-    train_dataset = torchvision.datasets.MNIST(root='./reservoir/data/', 
-                                               train=True, 
-                                               download=False, 
-                                               transform=transforms.ToTensor())
-    
-    # 只取一部分数据
-    assert train_num<= len(train_dataset)
-    idx = random.sample(list(range(len(train_dataset))), train_num)
-    train_dataset.data = train_dataset.data[idx]
-    
-    train_loader = torch.utils.data.DataLoader(train_dataset, 
-                                               batch_size=batch_size, 
-                                               shuffle=True, 
-                                               num_workers=0)
-
-    test_dataset = torchvision.datasets.MNIST(root='./reservoir/data/', 
-                                          train=False, 
-                                          download=False, 
-                                          transform=transforms.ToTensor())
-    
-    # 只取一部分数据
-    assert test_num<= len(test_dataset)
-    idx = random.sample(list(range(len(test_dataset))), test_num)
-    test_dataset.data = test_dataset.data[idx]
-    
-    test_loader = torch.utils.data.DataLoader(test_dataset, 
-                                              batch_size=batch_size, 
-                                              shuffle=False, 
-                                              num_workers=0)
-    return train_loader, test_loader
-
-
 
 if __name__ == '__main__':
     
