@@ -3,13 +3,13 @@ import random
 import torchvision
 import torchvision.transforms as transforms
 
-def MNIST_generation(train_num=1000, test_num=250, batch_size=1):
+def MNIST_generation(train_num=500, test_num=250, batch_size=1):
     '''
     生成随机编码的MNIST动态数据集
     train_num: 训练集样本数
     '''
     
-    train_dataset = torchvision.datasets.MNIST(root='./reservoir/data/', 
+    train_dataset = torchvision.datasets.MNIST(root='./data/', 
                                                train=True, 
                                                download=False, 
                                                transform=transforms.ToTensor())
@@ -24,7 +24,7 @@ def MNIST_generation(train_num=1000, test_num=250, batch_size=1):
                                                shuffle=True, 
                                                num_workers=0)
 
-    test_dataset = torchvision.datasets.MNIST(root='./reservoir/data/', 
+    test_dataset = torchvision.datasets.MNIST(root='./data/', 
                                           train=False, 
                                           download=False, 
                                           transform=transforms.ToTensor())
@@ -39,3 +39,6 @@ def MNIST_generation(train_num=1000, test_num=250, batch_size=1):
                                               shuffle=False, 
                                               num_workers=0)
     return train_loader, test_loader
+
+if __name__ == '__main__':
+    train_loader, test_loader = MNIST_generation()
