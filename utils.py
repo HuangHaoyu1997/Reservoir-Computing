@@ -60,6 +60,10 @@ def A_initial(N_hid, R, p, gamma):
                 else:
                     A[i,j] = np.random.gamma(gamma)
     
+    # cancel the self-connection
+    for i in range(N_hid):
+        A[i,i] = 0.
+    
     # weights = []
     # for _ in range(length):
     #     if np.random.rand() < self.p:
