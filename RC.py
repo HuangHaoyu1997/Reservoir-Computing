@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os, time, torch, ray, pickle
+import os, time, torch, pickle
 from scipy.linalg import pinv
 
 
-from utils import encoding, A_initial, activation
+from utils import encoding, A_initial, activation, softmax
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -58,9 +58,6 @@ class RC:
         self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
                                        high=0.0533*np.ones((self.N_out, self.N_hid)))
         
-        self.r_history = np.zeros((self.N_hid))
-        self.mem = np.zeros((self.N_hid))
-        # self.spike = np.zeros((self.N_hid))
     
     def state_dict(self,):
         return {
@@ -75,14 +72,17 @@ class RC:
             'threshold': self.thr,
         }
         
-    def membrane(self, x, spike):
-        mem = self.mem * self.decay * (1-spike) + x
+    def membrane(self, mem, x, spike):
+        '''
+        mem   [batch, N_hid]
+        x     [batch, N_hid]
+        spike [batch, N_hid]
+        '''
+        # print(mem.shape, spike.shape, x.shape)
+        mem = mem * self.decay * (1-spike) + x
         spike = np.array(mem>self.thr, dtype=np.float32)
-        self.mem = mem
-        return spike
-    
-    def softmax(self, x):
-        return np.exp(x)/np.exp(x).sum()
+        print(spike.shape, spike[12,:])
+        return mem, spike
     
     def forward(self, x):
         '''
@@ -91,42 +91,52 @@ class RC:
         y.shape
         spike_train.shape (frame, N_hid)
         '''
-        assert x.shape[0]>1
+        assert x.shape[1]>1
+        
+        batch = x.shape[0]
+        frames = x.shape[1]
+        
         spike_train = []
-        spike = np.zeros((self.N_hid))
-        timestep = x.shape[0]
-        for t in range(timestep):
-            Ar = np.matmul(self.A, self.r_history)
-            U = np.matmul(self.W_in, x[t,:])
-            r = (1 - self.alpha) * self.r_history + self.alpha * activation(Ar + U)
-            spike = self.membrane(r, spike)
-            spike_train.append(spike)
-            self.r_history = r
+        spike = np.zeros((batch, self.N_hid), dtype=np.float32)
+        r_history = np.zeros((batch, self.N_hid), dtype=np.float32)
+        mem = np.zeros((batch, self.N_hid), dtype=np.float32)
+        
+        for t in range(frames):
+            Ar = np.matmul(r_history, self.A) # (batch, N_hid)
             
-        y = np.matmul(self.W_out, r)
-        y = self.softmax(y)
+            U = np.matmul(x[:,t,:], self.W_in.T) # (batch, N_hid)
+            r = (1 - self.alpha) * r_history + self.alpha * activation(Ar + U)
+            mem, spike = self.membrane(mem, r, spike)
+            spike_train.append(spike)
+            r_history = r
+            
+        y = np.matmul(r, self.W_out.T)
+        # y = softmax(y)
         return r, y, np.array(spike_train)
 
 if __name__ == '__main__':
     
-    
+    from data import MNIST_generation
     # ray.init()
     
     train_loader, test_loader = MNIST_generation(train_num=500,
                                                  test_num=250,
-                                                 batch_size=1)
+                                                 batch_size=13)
+    
     model = RC(N_input=28*28,
                N_hidden=1000,
                N_output=10,
                alpha=0.8,
                decay=0.5,
-               threshold=1.0,
+               threshold=0.9,
                R=0.3,
                p=0.25,
                gamma=1.0,
                
                )
-    
+    for i, (images, lables) in enumerate(train_loader):
+        enc_img = encoding(images, frames=20)
+        model.forward(enc_img)
     learn(model, train_loader, frames=10)
     
     # from cma import CMAEvolutionStrategy

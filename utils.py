@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 def spectral_radius(M):
     '''
@@ -8,16 +9,27 @@ def spectral_radius(M):
     a, b = np.linalg.eig(M) #a为特征值集合，b为特征值向量
     return np.max(np.abs(a)) #返回谱半径
 
+def softmax(x):
+    print(x.shape)
+    print(np.exp(x)/np.exp(x).sum(-1))
+    return np.exp(x)/np.exp(x).sum(-1)
+    
 def encoding(image, frames):
     '''
     image pixel value控制的随机分布编码
     frames:动态帧长度
+    return: [batch, frames, 784]
     '''
+    num_img = image.shape[0]
     sample = []
     for _ in range(frames):
-        img = (image > torch.rand(image.size())).float().flatten().numpy()
+        img = (image > torch.rand(image.size())).float().reshape(num_img, -1)
+        img = img.numpy()
         sample.append(img)
-    return np.array(sample)
+    samples = np.array(sample)
+    samples = np.transpose(samples,[1,0,-1])
+    
+    return samples
 
 def allocation(X, Y, Z):
     '''
