@@ -22,29 +22,29 @@ def inference(model:RC,
     spikes = []
     for i, (image, label) in enumerate(train_loader):
         # static img -> random firing sequence
-        image = encoding(image.squeeze(), frames) # shape=(30,784)
-        
-        # spike.shape (frame, N_hid)=(5, 5000)
-        r, y, spike = model.forward(image)
-        spike_sum = spike.sum(0)
+        image = encoding(image.squeeze(1), frames) # shape=(30,784)
+        # spike.shape [frame, N_hid]
+        mems, spike = model.forward_(image)
+        spike_sum = spike.sum(0)/frames # [batch, N_hid]
+        print(spike_sum[0,0:20])
         
         # label_ = torch.zeros(batch_size, 10).scatter_(1, label.view(-1, 1), 1).squeeze().numpy()
         # loss = cross_entropy(label_, outputs)
         
-        rs.append(r)
+        
         spikes.append(spike_sum)
-        labels.append(label.item())
+        labels.extend(label.numpy().tolist())
         
     # print('Time elasped:', time.time() - start_time)
-    return np.array(rs), np.array(spikes), np.array(labels)
+    return np.array(spikes), np.array(labels)
 
 def learn_readout(X_train, 
-               X_validation, 
-               # X_test, 
-               y_train, 
-               y_validation, 
-               # y_test,
-               ):
+                    X_validation, 
+                    # X_test, 
+                    y_train, 
+                    y_validation, 
+                    # y_test,
+                    ):
     '''
     X_train: shape(r_dim, num)
     y_train: shape(num, )
@@ -106,7 +106,7 @@ def rollout(config):
     model = config_model(config)
     train_loader, test_loader = MNIST_generation(train_num=500,
                                                  test_num=250,
-                                                 batch_size=1)
+                                                 batch_size=13)
     loss = learn(model, train_loader, frames=10)
     return {'objs': (loss,)}
 
@@ -147,5 +147,5 @@ def param_search(run_time):
 if __name__ == '__main__':
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
     
-    param_search(run_time)
-    
+    # param_search(run_time)
+    inference()

@@ -10,24 +10,25 @@ def spectral_radius(M):
     return np.max(np.abs(a)) #返回谱半径
 
 def softmax(x):
-    print(x.shape)
-    print(np.exp(x)/np.exp(x).sum(-1))
+    # print(x.shape)
+    # print(np.exp(x)/np.exp(x).sum(-1))
     return np.exp(x)/np.exp(x).sum(-1)
     
 def encoding(image, frames):
     '''
     image pixel value控制的随机分布编码
     frames:动态帧长度
-    return: [batch, frames, 784]
+    return: [batch, frames, N_in]
     '''
-    num_img = image.shape[0]
+    batch = image.shape[0]
     sample = []
     for _ in range(frames):
-        img = (image > torch.rand(image.size())).float().reshape(num_img, -1)
+        img = (image > torch.rand(image.size())).float().reshape(batch, -1)
         img = img.numpy()
+        
         sample.append(img)
-    samples = np.array(sample)
-    samples = np.transpose(samples,[1,0,-1])
+    samples = np.array(sample) # [frames, batch, N_in]
+    samples = np.transpose(samples,[1,0,-1]) # [batch, frames, N_in]
     
     return samples
 

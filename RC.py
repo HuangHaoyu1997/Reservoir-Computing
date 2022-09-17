@@ -104,9 +104,11 @@ class RC:
         frames = x.shape[1]
         spike_train = []
         spike = np.zeros((batch, self.N_hid), dtype=np.float32)
-        mem = np.zeros((batch, self.N_hid), dtype=np.float32)
+        mem = np.random.uniform(0, 0.2, size=(batch, self.N_hid))
+        # mem = np.zeros((batch, self.N_hid), dtype=np.float32)
         mems = []
         for t in range(frames):
+            # x[:,t,:].shape (batch, N_in)
             U = np.matmul(x[:,t,:], self.W_in.T) # (batch, N_hid)
             r = np.matmul(spike, self.A) # (batch, N_hid)
             y = self.alpha * r + (1-self.alpha) * U
@@ -157,9 +159,9 @@ if __name__ == '__main__':
     from data import MNIST_generation
     # ray.init()
     
-    train_loader, test_loader = MNIST_generation(train_num=20,
+    train_loader, test_loader = MNIST_generation(train_num=32,
                                                  test_num=250,
-                                                 batch_size=13)
+                                                 batch_size=16)
     
     model = RC(N_input=28*28,
                N_hidden=1000,
@@ -167,7 +169,7 @@ if __name__ == '__main__':
                alpha=0.8,
                decay=0.5,
                threshold=1.3,
-               R=0.3,
+               R=0.2,
                p=0.25,
                gamma=1.0,
                
@@ -177,8 +179,13 @@ if __name__ == '__main__':
         mems, spike_train = model.forward_(enc_img)
         # r, y, spike_train = model.forward(enc_img)
         firing_rate = spike_train.sum(0)/20
-        # print(r.shape, y.shape)
-    plt.hist(firing_rate[2])
+    
+    
+    plt.figure()
+    for i in range(4):
+        for j in range(4):
+            plt.subplot(4,4,4*i+j+1)
+            plt.hist(firing_rate[4*i+j,:])
     plt.show()
     
     # learn(model, train_loader, frames=10)
