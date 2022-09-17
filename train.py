@@ -16,27 +16,29 @@ def inference(model:RC,
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
-    rs = []
+    num_data = len(train_loader)
+    N_hid = model.N_hid
+    
     # start_time = time.time()
     labels = []
-    spikes = []
+    spikes = None
+    
     for i, (image, label) in enumerate(train_loader):
         # static img -> random firing sequence
         image = encoding(image.squeeze(1), frames) # shape=(30,784)
         # spike.shape [frame, N_hid]
         mems, spike = model.forward_(image)
         spike_sum = spike.sum(0)/frames # [batch, N_hid]
-        print(spike_sum[0,0:20])
+        if spikes is None: spikes = spike_sum
+        else: spikes = np.concatenate((spikes, spike_sum))
         
         # label_ = torch.zeros(batch_size, 10).scatter_(1, label.view(-1, 1), 1).squeeze().numpy()
         # loss = cross_entropy(label_, outputs)
         
-        
-        spikes.append(spike_sum)
         labels.extend(label.numpy().tolist())
-        
     # print('Time elasped:', time.time() - start_time)
-    return np.array(spikes), np.array(labels)
+    
+    return spikes, np.array(labels)
 
 def learn_readout(X_train, 
                     X_validation, 
@@ -69,10 +71,10 @@ def learn_readout(X_train,
 def learn(model, train_loader, frames):
     # rs.shape (500, 1000)
     # labels.shape (500,)
-    rs, spikes, labels = inference(model,
-                            train_loader,
-                            frames,
-                            )
+    spikes, labels = inference(model,
+                                train_loader,
+                                frames,
+                                )
     # print(spikes.shape, labels.shape)
     train_rs = spikes[:300]
     train_label = labels[:300]
@@ -106,8 +108,8 @@ def rollout(config):
     model = config_model(config)
     train_loader, test_loader = MNIST_generation(train_num=500,
                                                  test_num=250,
-                                                 batch_size=13)
-    loss = learn(model, train_loader, frames=10)
+                                                 batch_size=75) # batch=75 速度最快
+    loss = learn(model, train_loader, frames=100)
     return {'objs': (loss,)}
 
 
