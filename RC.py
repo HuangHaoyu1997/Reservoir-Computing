@@ -1,13 +1,12 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os, time, torch, pickle
 from scipy.linalg import pinv
-
-
 from utils import encoding, A_initial, activation, softmax
-import warnings
 
-warnings.filterwarnings("ignore")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 class RC:
@@ -25,6 +24,7 @@ class RC:
                  p, # 
                  gamma,
                  ) -> None:
+        
         self.N_in = N_input
         self.N_hid = N_hidden
         self.N_out = N_output
@@ -34,6 +34,8 @@ class RC:
         self.R = R
         self.p = p
         self.gamma = gamma
+        self.random_init = True, # 初始状态是否随机初始化
+        
         self.reset()
     
         
@@ -74,6 +76,8 @@ class RC:
         
     def membrane(self, mem, x, spike):
         '''
+        update membrane voltage for reservoir neurons
+        
         mem   [batch, N_hid]
         x     [batch, N_hid]
         spike [batch, N_hid]
@@ -81,15 +85,48 @@ class RC:
         # print(mem.shape, spike.shape, x.shape)
         mem = mem * self.decay * (1-spike) + x
         spike = np.array(mem>self.thr, dtype=np.float32)
-        print(spike.shape, spike[12,:])
         return mem, spike
+    
+    def forward_(self, x):
+        '''
+        inference function of spiking version
+        
+        x: input vector
+        
+        return 
+        
+        mems: [frames, batch, N_hid]
+        
+        spike_train: [frames, batch, N_hid]
+        
+        '''
+        batch = x.shape[0]
+        frames = x.shape[1]
+        spike_train = []
+        spike = np.zeros((batch, self.N_hid), dtype=np.float32)
+        mem = np.zeros((batch, self.N_hid), dtype=np.float32)
+        mems = []
+        for t in range(frames):
+            U = np.matmul(x[:,t,:], self.W_in.T) # (batch, N_hid)
+            r = np.matmul(spike, self.A) # (batch, N_hid)
+            y = self.alpha * r + (1-self.alpha) * U
+            y = activation(y)
+            mem, spike = self.membrane(mem, y, spike)
+            spike_train.append(spike)
+            mems.append(mem)
+        
+        return np.array(mems), np.array(spike_train)
     
     def forward(self, x):
         '''
         一个样本的长度应该超过1,即由多帧动态数据构成
-        r.shape
-        y.shape
-        spike_train.shape (frame, N_hid)
+        
+        r.shape (batch, N_hid)
+        
+        y.shape (batch, N_out)
+        
+        spike_train.shape (frame, batch, N_hid)
+        
         '''
         assert x.shape[1]>1
         
@@ -102,6 +139,7 @@ class RC:
         mem = np.zeros((batch, self.N_hid), dtype=np.float32)
         
         for t in range(frames):
+            
             Ar = np.matmul(r_history, self.A) # (batch, N_hid)
             
             U = np.matmul(x[:,t,:], self.W_in.T) # (batch, N_hid)
@@ -119,7 +157,7 @@ if __name__ == '__main__':
     from data import MNIST_generation
     # ray.init()
     
-    train_loader, test_loader = MNIST_generation(train_num=500,
+    train_loader, test_loader = MNIST_generation(train_num=20,
                                                  test_num=250,
                                                  batch_size=13)
     
@@ -128,7 +166,7 @@ if __name__ == '__main__':
                N_output=10,
                alpha=0.8,
                decay=0.5,
-               threshold=0.9,
+               threshold=1.3,
                R=0.3,
                p=0.25,
                gamma=1.0,
@@ -136,8 +174,14 @@ if __name__ == '__main__':
                )
     for i, (images, lables) in enumerate(train_loader):
         enc_img = encoding(images, frames=20)
-        model.forward(enc_img)
-    learn(model, train_loader, frames=10)
+        mems, spike_train = model.forward_(enc_img)
+        # r, y, spike_train = model.forward(enc_img)
+        firing_rate = spike_train.sum(0)/20
+        # print(r.shape, y.shape)
+    plt.hist(firing_rate[2])
+    plt.show()
+    
+    # learn(model, train_loader, frames=10)
     
     # from cma import CMAEvolutionStrategy
     # es = CMAEvolutionStrategy(x0=np.zeros((model.N_hid*model.N_out)),

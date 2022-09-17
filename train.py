@@ -111,7 +111,7 @@ def rollout(config):
     return {'objs': (loss,)}
 
 
-def param_search():
+def param_search(run_time):
     # Define Search Space
     space = sp.Space()
     x1 = sp.Real(name="alpha", lower=0, upper=1, default_value=0.5)
@@ -141,8 +141,11 @@ def param_search():
     history = opt.run()
     print(history)
     # print(history.get_importance()) # 输出参数重要性
-    with open('log_9_15.pkl', 'wb') as f:
+    with open(run_time+'.pkl', 'wb') as f:
         pickle.dump(history, f)
 
 if __name__ == '__main__':
-    param_search()
+    run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
+    
+    param_search(run_time)
+    

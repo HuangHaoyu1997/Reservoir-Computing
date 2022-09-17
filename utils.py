@@ -88,8 +88,8 @@ def A_initial(N_hid, R, p, gamma):
 
 def activation(x):
     # return np.maximum(x, 0)
-    return 1/(1+np.exp(-x))
-    # return np.tanh(x)
+    # return 1/(1+np.exp(-x))
+    return np.tanh(x)
 
 def cross_entropy(p, q):
     '''
