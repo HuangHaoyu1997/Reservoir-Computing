@@ -1,4 +1,6 @@
 from train import *
+import matplotlib.pyplot as plt
+from utils import *
 
 if __name__ == '__main__':
     config = {
@@ -7,10 +9,14 @@ if __name__ == '__main__':
         'thr': 1.2,
         'R': 0.15,
         'p': 0.25,
-        'gamma': 5.0,
+        'gamma': 1.0,
     }
-    # model = config_model(config)
+    model = config_model(config)
+    # print(1000**2-(model.A==0).sum())
+    # print(spectral_radius(model.A))
     
+    # plt.imshow(model.A)
+    # plt.show()
     # train_loader, test_loader = MNIST_generation(train_num=100,
     #                                              test_num=250,
     #                                              batch_size=13)

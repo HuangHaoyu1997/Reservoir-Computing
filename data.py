@@ -1,7 +1,27 @@
 import torch
 import random
+import numpy as np
 import torchvision
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+
+def toy_generation(train_num=1000):
+    '''
+    implementation for Lorenz 63
+    '''
+    
+
+    # delta t
+    dt = 0.01
+    
+    traj = np.zeros((train_num, 3), dtype=np.float32)
+    traj[0] = [0.1,0.1,0.1]
+    for i in range(train_num-1):
+        traj[i+1, 0] = traj[i, 0] + dt * 10 * (traj[i, 1] - traj[i, 0])
+        traj[i+1, 1] = traj[i, 1] + dt * (traj[i, 0] * (28 - traj[i, 2]) - traj[i, 1])
+        traj[i+1, 2] = traj[i, 2] + dt * (traj[i, 0] * traj[i, 1] - 8/3 * traj[i, 2])
+        
+    return traj
 
 def MNIST_generation(train_num=500, test_num=250, batch_size=1):
     '''
@@ -41,4 +61,16 @@ def MNIST_generation(train_num=500, test_num=250, batch_size=1):
     return train_loader, test_loader
 
 if __name__ == '__main__':
-    train_loader, test_loader = MNIST_generation()
+    # train_loader, test_loader = MNIST_generation()
+    train_data = toy_generation(train_num=1000,
+                                )
+    
+    
+    # plt.plot(train_data[:,0])
+    # plt.plot(train_data[:,1])
+    # plt.plot(train_data[:,2])
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.plot(train_data[:,0],train_data[:,1],train_data[:,2])
+    plt.show()
+    

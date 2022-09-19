@@ -93,7 +93,7 @@ def learn(model, train_loader, frames):
 
 def config_model(config):
     model = RC(N_input=28*28,
-                N_hidden=1000,
+                N_hidden=8000,
                 N_output=10,
                 alpha=config['alpha'],
                 decay=config['decay'],

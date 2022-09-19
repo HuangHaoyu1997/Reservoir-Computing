@@ -54,7 +54,7 @@ def A_initial(N_hid, R, p, gamma):
     
     '''
     length = N_hid * N_hid
-    V = allocation(X=10, Y=10, Z=10)
+    V = allocation(X=20, Y=20, Z=20)
     A = np.zeros((N_hid, N_hid), dtype=np.float32)
     
     for i in range(N_hid):
@@ -76,7 +76,7 @@ def A_initial(N_hid, R, p, gamma):
     # cancel the self-connection
     for i in range(N_hid):
         A[i,i] = 0.
-    
+    A /= spectral_radius(A)
     # weights = []
     # for _ in range(length):
     #     if np.random.rand() < self.p:
