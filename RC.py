@@ -93,7 +93,7 @@ class RC:
         
         x: input vector
         
-        return 
+        return
         
         mems: [frames, batch, N_hid]
         
@@ -153,6 +153,12 @@ class RC:
         y = np.matmul(r, self.W_out.T)
         # y = softmax(y)
         return r, y, np.array(spike_train)
+
+
+class RCagent:
+    def __init__(self) -> None:
+        
+    
 
 if __name__ == '__main__':
     
