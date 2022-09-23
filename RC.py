@@ -38,7 +38,12 @@ class RC:
         
         self.reset()
     
-        
+    def _set_decay(self,):
+        '''
+        set decay for reservoir neurons
+        '''
+        pass
+    
     def reset(self,):
         '''
         random initialization:
@@ -83,6 +88,10 @@ class RC:
         spike [batch, N_hid]
         '''
         # print(mem.shape, spike.shape, x.shape)
+        a = np.random.rand(200)
+        decay = np.array([a for i in range(75)])
+        tmp = mem*a
+        print(tmp.shape)
         mem = mem * self.decay * (1-spike) + x
         spike = np.array(mem>self.thr, dtype=np.float32)
         return mem, spike
@@ -157,7 +166,7 @@ class RC:
 
 class RCagent:
     def __init__(self) -> None:
-        
+        pass
     
 
 if __name__ == '__main__':
