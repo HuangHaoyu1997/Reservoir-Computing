@@ -65,6 +65,8 @@ class RC:
         self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
                                        high=0.0533*np.ones((self.N_out, self.N_hid)))
         
+        if not self.decay:
+            self.decay = np.random.rand
     
     def state_dict(self,):
         return {
@@ -88,8 +90,9 @@ class RC:
         spike [batch, N_hid]
         '''
         # print(mem.shape, spike.shape, x.shape)
+        batch = mem.shape[0]
         a = np.random.rand(200)
-        decay = np.array([a for i in range(75)])
+        decay = np.array([a for _ in range(batch)])
         tmp = mem*a
         print(tmp.shape)
         mem = mem * self.decay * (1-spike) + x
