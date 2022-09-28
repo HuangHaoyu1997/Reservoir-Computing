@@ -27,10 +27,15 @@ def inference(model:RC,
         # static img -> random firing sequence
         image = encoding(image.squeeze(1), frames) # shape=(30,784)
         # spike.shape [frame, N_hid]
-        mems, spike = model.forward_(image)
-        spike_sum = spike.sum(0)/frames # [batch, N_hid]
-        if spikes is None: spikes = spike_sum
-        else: spikes = np.concatenate((spikes, spike_sum))
+        mems, spike = model.forward_(image) # [frames, batch, N_hid], [frames, batch, N_hid]
+        
+        # concat the membrane vector and spike train vector as the image representation
+        concat = np.concatenate((mems, spike), axis=-1)
+        concat = concat.mean(0) # [batch, N_hid]
+        # spike_sum = spike.sum(0)/frames # [batch, N_hid]
+        
+        if spikes is None: spikes = concat # spikes = spike_sum
+        else: spikes = np.concatenate((spikes, concat))
         
         # label_ = torch.zeros(batch_size, 10).scatter_(1, label.view(-1, 1), 1).squeeze().numpy()
         # loss = cross_entropy(label_, outputs)
@@ -54,14 +59,15 @@ def learn_readout(X_train,
     accuracy_score返回分类精度,最高=1
     '''
     lr = LogisticRegression(solver='lbfgs',
-                            multi_class='multinomial',
+                            multi_class='auto', # multinomial
                             verbose=False,
-                            max_iter=200,
+                            max_iter=100,
                             n_jobs=-1,
                             )
     lr.fit(X_train.T, y_train.T)
     y_train_predictions = lr.predict(X_train.T)
     y_validation_predictions = lr.predict(X_validation.T)
+    print(y_validation, y_validation_predictions)
     # y_test_predictions = lr.predict(X_test.T)
     
     return accuracy_score(y_train_predictions, y_train.T), \

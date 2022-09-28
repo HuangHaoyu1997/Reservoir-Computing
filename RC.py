@@ -95,6 +95,7 @@ class RC:
                 mem = mem * self.decay - self.thr * (1-spike) + x # 
             else:
                 mem = mem * self.decay * (1-spike) + x
+        
         # heterogeneous decay factor
         else:
             decay = np.array([self.decay for _ in range(batch)])
@@ -125,12 +126,13 @@ class RC:
         spike = np.zeros((batch, self.N_hid), dtype=np.float32)
         mem = np.random.uniform(0, 0.2, size=(batch, self.N_hid))
         # mem = np.zeros((batch, self.N_hid), dtype=np.float32)
+        bias = np.array([self.bias for _ in range(batch)])
         mems = []
         for t in range(frames):
             # x[:,t,:].shape (batch, N_in)
             U = np.matmul(x[:,t,:], self.W_in.T) # (batch, N_hid)
             r = np.matmul(spike, self.A) # (batch, N_hid)
-            y = self.alpha * r + (1-self.alpha) * U
+            y = self.alpha * r + (1-self.alpha) * (U + bias)
             y = activation(y)
             mem, spike = self.membrane(mem, y, spike)
             spike_train.append(spike)
