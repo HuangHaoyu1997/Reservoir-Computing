@@ -10,20 +10,20 @@ from openbox import Optimizer, sp, ParallelOptimizer
 
 # @ray.remote
 def inference(model:RC,
-              train_loader,
+              data_loader,
               frames
               ):
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
-    num_data = len(train_loader)
+    num_data = len(data_loader)
     N_hid = model.N_hid
     
     # start_time = time.time()
     labels = []
     spikes = None
     
-    for i, (image, label) in enumerate(train_loader):
+    for i, (image, label) in enumerate(data_loader):
         # static img -> random firing sequence
         image = encoding(image.squeeze(1), frames) # shape=(30,784)
         # spike.shape [frame, N_hid]
@@ -74,20 +74,18 @@ def learn_readout(X_train,
             accuracy_score(y_validation_predictions, y_validation.T), \
             # accuracy_score(y_test_predictions, y_test.T)
 
-def learn(model, train_loader, frames):
+def learn(model, train_loader, test_loader, frames):
     # rs.shape (500, 1000)
     # labels.shape (500,)
-    spikes, labels = inference(model,
+    train_rs, train_label = inference(model,
                                 train_loader,
                                 frames,
                                 )
-    # print(spikes.shape, labels.shape)
-    train_rs = spikes[:300]
-    train_label = labels[:300]
-    test_rs = spikes[300:]
-    test_label = labels[300:]
-    # val_rs = spikes[400:]
-    # val_label = labels[400:]
+    
+    test_rs, test_label = inference(model,
+                                test_loader,
+                                frames,
+                                )
     tr_score, val_score, = learn_readout(train_rs.T, 
                                          # val_rs.T, 
                                          test_rs.T, 
@@ -107,16 +105,16 @@ def config_model(config):
                 R=config['R'],
                 p=config['p'],
                 gamma=config['gamma'],
-                sub_thr=False,
+                sub_thr=True,
                 )
     return model
 
 def rollout(config):
     model = config_model(config)
-    train_loader, test_loader = MNIST_generation(train_num=500,
-                                                 test_num=250,
+    train_loader, test_loader = MNIST_generation(train_num=5000,
+                                                 test_num=2500,
                                                  batch_size=75) # batch=75 速度最快
-    loss = learn(model, train_loader, frames=25)
+    loss = learn(model, train_loader, test_loader, frames=25)
     return {'objs': (loss,)}
 
 
