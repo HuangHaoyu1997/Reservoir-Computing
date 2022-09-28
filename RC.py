@@ -23,6 +23,7 @@ class RC:
                  R, # distance factor
                  p, # 
                  gamma,
+                 sub_thr, # when firing, subtract threshold to membrane potential
                  ) -> None:
         
         self.N_in = N_input
@@ -35,14 +36,9 @@ class RC:
         self.p = p
         self.gamma = gamma
         self.random_init = True, # 初始状态是否随机初始化
+        self.sub_thr = sub_thr
         
         self.reset()
-    
-    def _set_decay(self,):
-        '''
-        set decay for reservoir neurons
-        '''
-        pass
     
     def reset(self,):
         '''
@@ -54,24 +50,23 @@ class RC:
         mem:       membrane potential of reservoir neurons
         
         '''
-        self.W_in = np.random.uniform(low=np.zeros((self.N_hid, self.N_in)), 
-                                      high=np.ones((self.N_hid, self.N_in))*0.1)
-        
+        self.W_in = np.random.uniform(-0.1, 0.1, size=(self.N_hid, self.N_in))
         self.A = A_initial(self.N_hid, self.R, self.p, self.gamma)
-        # self.A = np.random.uniform(low=-1*np.ones((self.N_hid, self.N_hid)), 
-        #                            high=np.ones((self.N_hid, self.N_hid)))
+        self.bias = np.random.uniform(-1, 1, size=(self.N_hid))
         
         # 用系数0.0533缩放，以保证谱半径ρ(A)=1.0
         self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
                                        high=0.0533*np.ones((self.N_out, self.N_hid)))
         
+        # 如果decay不是一个非零实数,则初始化为随机向量
         if not self.decay:
-            self.decay = np.random.rand
+            self.decay = np.random.uniform(0.2, 1.0, size=(self.N_hid)) # np.random.rand(self.N_hid)
     
     def state_dict(self,):
         return {
             'W_in': self.W_in,
             'A': self.A,
+            'bias': self.bias,
             'W_out': self.W_out,
             'N_input': self.N_in,
             'N_hidden': self.N_hid,
@@ -79,6 +74,8 @@ class RC:
             'alpha': self.alpha,
             'decay': self.decay,
             'threshold': self.thr,
+            'R': self.R,
+            'p': self.p,
         }
         
     def membrane(self, mem, x, spike):
@@ -91,11 +88,21 @@ class RC:
         '''
         # print(mem.shape, spike.shape, x.shape)
         batch = mem.shape[0]
-        a = np.random.rand(200)
-        decay = np.array([a for _ in range(batch)])
-        tmp = mem*a
-        print(tmp.shape)
-        mem = mem * self.decay * (1-spike) + x
+        
+        # homogeneous decay factor
+        if isinstance(self.decay, float):
+            if self.sub_thr:
+                mem = mem * self.decay - self.thr * (1-spike) + x # 
+            else:
+                mem = mem * self.decay * (1-spike) + x
+        # heterogeneous decay factor
+        else:
+            decay = np.array([self.decay for _ in range(batch)])
+            if self.sub_thr:
+                mem = mem * decay - self.thr * (1-spike) + x # 
+            else:
+                mem = mem * decay * (1-spike) + x
+                
         spike = np.array(mem>self.thr, dtype=np.float32)
         return mem, spike
     
@@ -185,12 +192,12 @@ if __name__ == '__main__':
                N_hidden=1000,
                N_output=10,
                alpha=0.8,
-               decay=0.5,
-               threshold=1.3,
+               decay=None, # None for random decay of neurons
+               threshold=0.3,
                R=0.2,
                p=0.25,
                gamma=1.0,
-               
+               sub_thr=False
                )
     for i, (images, lables) in enumerate(train_loader):
         enc_img = encoding(images, frames=20)

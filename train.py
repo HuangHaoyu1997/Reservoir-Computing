@@ -93,7 +93,7 @@ def learn(model, train_loader, frames):
 
 def config_model(config):
     model = RC(N_input=28*28,
-                N_hidden=200,
+                N_hidden=1000,
                 N_output=10,
                 alpha=config['alpha'],
                 decay=config['decay'],
@@ -101,6 +101,7 @@ def config_model(config):
                 R=config['R'],
                 p=config['p'],
                 gamma=config['gamma'],
+                sub_thr=False,
                 )
     return model
 
@@ -109,7 +110,7 @@ def rollout(config):
     train_loader, test_loader = MNIST_generation(train_num=500,
                                                  test_num=250,
                                                  batch_size=75) # batch=75 速度最快
-    loss = learn(model, train_loader, frames=100)
+    loss = learn(model, train_loader, frames=25)
     return {'objs': (loss,)}
 
 
