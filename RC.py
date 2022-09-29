@@ -6,8 +6,68 @@ import matplotlib.pyplot as plt
 import os, time, torch, pickle
 from scipy.linalg import pinv
 from utils import encoding, A_initial, activation, softmax
+import torch
+import torch.nn as nn
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+class torchRC(nn.Module):
+    '''
+    Reservoir Computing Model in pytorch version
+    '''
+    def __init__(self,
+                 N_input, # 输入维度
+                 N_hidden, # reservoir神经元数量
+                 N_output, # 输出维度
+                 alpha, # memory factor
+                 decay, # membrane potential decay factor
+                 threshold, # firing threshold
+                 R, # distance factor
+                 p, # ratio of inhibitory neurons
+                 gamma,
+                 sub_thr, # when firing, subtract threshold to membrane potential
+                 binary, # binary A matrix
+                 ) -> None:
+        super(torchRC, self).__init__()
+        
+        self.N_in = N_input
+        self.N_hid = N_hidden
+        self.N_out = N_output
+        self.alpha = alpha
+        self.decay = decay
+        self.thr = threshold
+        self.R = R
+        self.p = p
+        self.gamma = gamma
+        self.random_init = True, # 初始状态是否随机初始化
+        self.sub_thr = sub_thr
+        self.binary = binary
+        
+        self.reset()
+    
+    def reset(self,):
+        '''
+        random initialization:
+        W_in:      input weight matrix
+        A:         reservoir weight matrix
+        W_out:     readout weight matrix
+        r_history: state of reservoir neurons
+        mem:       membrane potential of reservoir neurons
+        
+        '''
+        W_in = nn.Parameter(torch.rand(self.N_hid, self.N_in) * 0.2-0.1) # unif(-0.1, 0.1)
+        A = nn.Parameter(A_initial(self.N_hid, self.R, self.p, self.gamma, self.binary))
+        # zero element mask
+        zero_mask = A==0
+        bias = nn.Parameter(torch.rand(self.N_hid) * 2-1) # unif(-1,1)
+        
+        # 用系数0.0533缩放，以保证谱半径ρ(A)=1.0
+        self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
+                                       high=0.0533*np.ones((self.N_out, self.N_hid)))
+        
+        # 如果decay不是一个非零实数,则初始化为随机向量
+        if not self.decay:
+            self.decay = np.random.uniform(0.2, 1.0, size=(self.N_hid)) # np.random.rand(self.N_hid)
 
 class RC:
     '''

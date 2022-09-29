@@ -45,7 +45,7 @@ def allocation(X, Y, Z):
     np.random.shuffle(V)
     return V
 
-def A_initial(N_hid, R, p, gamma):
+def A_initial(N_hid, R, p, gamma, binary=False):
     '''
     initialize random weights for matrix A
     p: ratio of inhibitory neurons 抑制性
@@ -76,7 +76,20 @@ def A_initial(N_hid, R, p, gamma):
     # cancel the self-connection
     for i in range(N_hid):
         A[i,i] = 0.
+    
+    
+    # 二值矩阵
+    if binary:
+        for i in range(N_hid):
+            for j in range(N_hid):
+                if A[i,j]>0:
+                    A[i,j] = 1.
+                elif A[i,j] < 0:
+                    A[i,j] = -1.
+                elif A[i,j] == 0:
+                    pass
     A /= spectral_radius(A)
+    
     # weights = []
     # for _ in range(length):
     #     if np.random.rand() < self.p:
@@ -90,7 +103,8 @@ def A_initial(N_hid, R, p, gamma):
 def activation(x):
     # return np.maximum(x, 0)
     # return 1/(1+np.exp(-x))
-    return np.tanh(x)
+    # return np.tanh(x)
+    return x
 
 def cross_entropy(p, q):
     '''

@@ -25,8 +25,8 @@ def inference(model:RC,
     
     for i, (image, label) in enumerate(data_loader):
         # static img -> random firing sequence
+        print(i)
         image = encoding(image.squeeze(1), frames) # shape=(30,784)
-        # spike.shape [frame, N_hid]
         mems, spike = model.forward_(image) # [frames, batch, N_hid], [frames, batch, N_hid]
         
         # concat the membrane vector and spike train vector as the image representation
@@ -111,9 +111,9 @@ def config_model(config):
 
 def rollout(config):
     model = config_model(config)
-    train_loader, test_loader = MNIST_generation(train_num=5000,
-                                                 test_num=2500,
-                                                 batch_size=75) # batch=75 速度最快
+    train_loader, test_loader = MNIST_generation(train_num=500,
+                                                 test_num=300,
+                                                 batch_size=1000) # batch=75 速度最快
     loss = learn(model, train_loader, test_loader, frames=25)
     return {'objs': (loss,)}
 
