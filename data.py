@@ -60,8 +60,7 @@ def MNIST_generation(train_num=500, test_num=250, batch_size=1):
 
 if __name__ == '__main__':
     # train_loader, test_loader = MNIST_generation()
-    train_data = Lorenz63(train_num=1000,
-                                )
+    train_data = Lorenz63(train_num=1000)
     
     
     # plt.plot(train_data[:,0])

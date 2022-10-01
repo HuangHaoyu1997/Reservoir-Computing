@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+from turtle import forward
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -8,6 +10,7 @@ from scipy.linalg import pinv
 from utils import encoding, A_initial, activation, softmax
 import torch
 import torch.nn as nn
+from utils import *
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -27,6 +30,8 @@ class torchRC(nn.Module):
                  gamma,
                  sub_thr, # when firing, subtract threshold to membrane potential
                  binary, # binary A matrix
+                 frames,
+                 device,
                  ) -> None:
         super(torchRC, self).__init__()
         
@@ -42,8 +47,74 @@ class torchRC(nn.Module):
         self.random_init = True, # 初始状态是否随机初始化
         self.sub_thr = sub_thr
         self.binary = binary
+        self.frames = frames
+        self.device = device
         
-        self.reset()
+        self.W_in, self.A, self.bias = self.reset()
+        zero_mask = self.A==0
+        
+        
+    def membrane(self, mem, x, spike):
+        '''
+        update membrane voltage for reservoir neurons
+        
+        mem   [batch, N_hid]
+        x     [batch, N_hid]
+        spike [batch, N_hid]
+        '''
+        # print(mem.shape, spike.shape, x.shape)
+        # batch = mem.shape[0]
+        # decay = np.array([self.decay for _ in range(batch)])
+        mem = mem * self.decay - self.thr * (1-spike) + x # 
+        # mem = mem * self.decay * (1-spike) + x
+        
+        spike = torch.tensor(mem>self.thr, dtype=torch.float32)
+        return mem, spike
+    
+    def forward(self, x):
+        '''
+        inference function of spiking version
+        
+        x: input tensor [batch, 1, 28, 28]
+        
+        return
+        
+        mems: [frames, batch, N_hid]
+        
+        spike_train: [frames, batch, N_hid]
+        
+        '''
+        batch = x.shape[0]
+        x_enc = None
+        for n in range(self.frames):
+            spike = (x > torch.rand(x.size()).to(self.device)).float()
+            if x_enc is None: x_enc = spike
+            else: x_enc = torch.cat((x_enc, spike), dim=1)
+        x_enc = x_enc.view(batch, self.frames, self.N_in) # [batch, frames, N_in]
+        # for n in range(self.frames):
+        #     plt.imshow(spike.numpy()[0, n])
+        #     plt.show()
+        #     plt.pause(1)
+        
+        spike_train = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
+        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        for t in range(self.frames):
+            # x_enc[:,t,:].shape (batch, N_in)
+            
+            U = torch.mm(x_enc[:,t,:], self.W_in) # (batch, N_hid)
+            # The input signal from neighbor neurons
+            r = torch.mm(spike, self.A) # (batch, N_hid)
+            
+            y = self.alpha * r + (1-self.alpha) * (U + self.bias)
+            y = act(y) # activation function
+            mem, spike = self.membrane(mem, y, spike)
+            mems[:,t,:] = mem
+            spike_train[:,t,:] = spike
+        
+        return mems, spike_train
     
     def reset(self,):
         '''
@@ -55,11 +126,14 @@ class torchRC(nn.Module):
         mem:       membrane potential of reservoir neurons
         
         '''
-        W_in = nn.Parameter(torch.rand(self.N_hid, self.N_in) * 0.2-0.1) # unif(-0.1, 0.1)
-        A = nn.Parameter(A_initial(self.N_hid, self.R, self.p, self.gamma, self.binary))
-        # zero element mask
-        zero_mask = A==0
-        bias = nn.Parameter(torch.rand(self.N_hid) * 2-1) # unif(-1,1)
+        W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+        A = nn.Parameter(torch.tensor(A_initial(self.N_hid, 
+                                                self.R, 
+                                                self.p, 
+                                                self.gamma, 
+                                                self.binary))).to(self.device)
+        
+        bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
         
         # 用系数0.0533缩放，以保证谱半径ρ(A)=1.0
         self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
@@ -67,7 +141,8 @@ class torchRC(nn.Module):
         
         # 如果decay不是一个非零实数,则初始化为随机向量
         if not self.decay:
-            self.decay = np.random.uniform(0.2, 1.0, size=(self.N_hid)) # np.random.rand(self.N_hid)
+            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
+        return W_in, A, bias
 
 class RC:
     '''
@@ -245,10 +320,10 @@ if __name__ == '__main__':
     
     from data import MNIST_generation
     # ray.init()
-    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader, test_loader = MNIST_generation(train_num=32,
                                                  test_num=250,
-                                                 batch_size=16)
+                                                 batch_size=1000)
     
     model = RC(N_input=28*28,
                N_hidden=1000,
@@ -259,13 +334,29 @@ if __name__ == '__main__':
                R=0.2,
                p=0.25,
                gamma=1.0,
-               sub_thr=False
+               sub_thr=False,
                )
+    modeltorch = torchRC(N_input=28*28,
+                         N_hidden=1000,
+                         N_output=10,
+                         alpha=0.8,
+                         decay=None,
+                         threshold=0.3,
+                         R=0.2,
+                         p=0.25,
+                         gamma=1.0,
+                         sub_thr=False,
+                         binary=False,
+                         frames=30,
+                         device=device,
+                         ).to(device)
+    
     for i, (images, lables) in enumerate(train_loader):
-        enc_img = encoding(images, frames=20)
-        mems, spike_train = model.forward_(enc_img)
-        # r, y, spike_train = model.forward(enc_img)
-        firing_rate = spike_train.sum(0)/20
+        # enc_img = encoding(images, frames=20)
+        # mems, spike_train = model.forward_(enc_img)
+        mems, spike_train = modeltorch(images.to(device))
+        print(spike_train.shape, spike_train[0,0,0].requires_grads)
+        firing_rate = spike_train.sum(0) / modeltorch.frames
     
     
     plt.figure()

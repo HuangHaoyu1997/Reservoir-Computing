@@ -2,6 +2,15 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+def torchUniform(low, high, size):
+    '''
+    return pytorch uniform ranging [low, high]
+    '''
+    tmp = torch.rand(size)
+    tmp *= (high - low)
+    tmp += low
+    return tmp
+
 def spectral_radius(M):
     '''
     计算矩阵的谱半径
@@ -99,6 +108,13 @@ def A_initial(N_hid, R, p, gamma, binary=False):
     
     # weights = np.array(weights).reshape((self.N_hid, self.N_hid))
     return A
+
+def act(x):
+    '''
+    pytorch activation function
+    '''
+    # return 1/(1+torch.exp(-x))
+    return torch.tanh(x)
 
 def activation(x):
     # return np.maximum(x, 0)
