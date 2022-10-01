@@ -323,7 +323,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader, test_loader = MNIST_generation(train_num=32,
                                                  test_num=250,
-                                                 batch_size=1000)
+                                                 batch_size=2000)
     
     model = RC(N_input=28*28,
                N_hidden=1000,
@@ -350,14 +350,14 @@ if __name__ == '__main__':
                          frames=30,
                          device=device,
                          ).to(device)
-    
+    t = time.time()
     for i, (images, lables) in enumerate(train_loader):
         # enc_img = encoding(images, frames=20)
         # mems, spike_train = model.forward_(enc_img)
         mems, spike_train = modeltorch(images.to(device))
-        print(spike_train.shape, spike_train[0,0,0].requires_grads)
+        # print(spike_train.sum(1).shape)
         firing_rate = spike_train.sum(0) / modeltorch.frames
-    
+    print(time.time() - t)
     
     plt.figure()
     for i in range(4):
