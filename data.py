@@ -21,7 +21,7 @@ def Lorenz63(train_num=1000):
         
     return traj
 
-def MNIST_generation(train_num=500, test_num=250, batch_size=1):
+def MNIST_generation(batch_size=1):
     '''
     生成随机编码的MNIST动态数据集
     train_num: 训练集样本数

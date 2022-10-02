@@ -10,6 +10,8 @@ if __name__ == '__main__':
         'R': 0.4,
         'p': 0.20,
         'gamma': 1.0,
+        'frames': 20,
+        'device': 'cuda',
     }
     t = time.time()
     model = config_model(config)

@@ -310,6 +310,26 @@ class RC:
         # y = softmax(y)
         return r, y, np.array(spike_train)
 
+class MLP(nn.Module):
+    def __init__(self,
+                 N_in,
+                 N_hid,
+                 N_out,
+                 ) -> None:
+        super(MLP, self).__init__()
+        
+        self.relu = nn.ReLU()
+        self.fc1 = nn.Linear(N_in, N_hid)
+        self.fc2=nn.Linear(N_hid, N_hid) #2个隐层
+        self.fc3=nn.Linear(N_hid, N_out)
+    
+    def forward(self, x):
+        
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
 
 class RCagent:
     def __init__(self) -> None:
@@ -342,7 +362,7 @@ if __name__ == '__main__':
                          alpha=0.8,
                          decay=None,
                          threshold=0.3,
-                         R=0.2,
+                         R=0.3,
                          p=0.25,
                          gamma=1.0,
                          sub_thr=False,
@@ -350,6 +370,7 @@ if __name__ == '__main__':
                          frames=30,
                          device=device,
                          ).to(device)
+    print('zero weight in A:', (modeltorch.A==0).sum())
     t = time.time()
     for i, (images, lables) in enumerate(train_loader):
         # enc_img = encoding(images, frames=20)

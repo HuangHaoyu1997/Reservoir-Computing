@@ -1,38 +1,36 @@
+'''
+train the pytorch version Reservoir Computing model in GPUs
+'''
+
 import time
 import pickle
 import numpy as np
-from RC import RC, torchRC
+from RC import torchRC
 from utils import encoding
 from data import MNIST_generation
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
 
-# @ray.remote
-def inference(model:RC,
+def inference(model:torchRC,
               data_loader,
-              frames
               ):
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
-    num_data = len(data_loader)
-    N_hid = model.N_hid
-    
+    device = model.device
     # start_time = time.time()
     labels = []
     spikes = None
     
     for i, (image, label) in enumerate(data_loader):
-        # static img -> random firing sequence
-        print(i)
-        image = encoding(image.squeeze(1), frames) # shape=(30,784)
-        mems, spike = model.forward_(image) # [frames, batch, N_hid], [frames, batch, N_hid]
         
+        print('batch', i)
+        mems, spike = model(image.to(device)) # [frames, batch, N_hid], [frames, batch, N_hid]
+        print(mems.shape, spike.shape)
         # concat the membrane vector and spike train vector as the image representation
         concat = np.concatenate((mems, spike), axis=-1)
         concat = concat.mean(0) # [batch, N_hid]
-        # spike_sum = spike.sum(0)/frames # [batch, N_hid]
         
         if spikes is None: spikes = concat # spikes = spike_sum
         else: spikes = np.concatenate((spikes, concat))
@@ -46,12 +44,10 @@ def inference(model:RC,
     return spikes, np.array(labels)
 
 def learn_readout(X_train, 
-                    X_validation, 
-                    # X_test, 
-                    y_train, 
-                    y_validation, 
-                    # y_test,
-                    ):
+                  X_validation, 
+                  y_train, 
+                  y_validation, 
+                  ):
     '''
     X_train: shape(r_dim, num)
     y_train: shape(num, )
@@ -77,45 +73,37 @@ def learn_readout(X_train,
 def learn(model, train_loader, test_loader, frames):
     # rs.shape (500, 1000)
     # labels.shape (500,)
-    train_rs, train_label = inference(model,
-                                train_loader,
-                                frames,
-                                )
+    train_rs, train_label = inference(model, train_loader,)
     
-    test_rs, test_label = inference(model,
-                                test_loader,
-                                frames,
-                                )
-    tr_score, val_score, = learn_readout(train_rs.T, 
-                                         # val_rs.T, 
+    test_rs, test_label = inference(model, test_loader,)
+    
+    tr_score, te_score, = learn_readout(train_rs.T, 
                                          test_rs.T, 
                                          train_label, 
-                                         # val_label, 
                                          test_label)
-    print(tr_score, val_score)
-    return -val_score # openbox 默认最小化loss
+    print(tr_score, te_score)
+    return -te_score # openbox 默认最小化loss
 
 def config_model(config):
-
-    model = RC(N_input=28*28,
-                N_hidden=1000,
-                N_output=10,
-                alpha=config['alpha'],
-                decay=config['decay'],
-                threshold=config['thr'],
-                R=config['R'],
-                p=config['p'],
-                gamma=config['gamma'],
-                sub_thr=True,
-                )
-    
+    model = torchRC(N_input=28*28,
+                    N_hidden=1000,
+                    N_output=10,
+                    alpha=config['alpha'],
+                    decay=config['decay'],
+                    threshold=config['thr'],
+                    R=config['R'],
+                    p=config['p'],
+                    gamma=config['gamma'],
+                    sub_thr=False,
+                    binary=False,
+                    frames=config['frames'],
+                    device=config['device'],
+                    )
     return model
 
 def rollout(config):
     model = config_model(config)
-    train_loader, test_loader = MNIST_generation(train_num=500,
-                                                 test_num=300,
-                                                 batch_size=1000) # batch=75 速度最快
+    train_loader, test_loader = MNIST_generation(batch_size=2000) # batch=2000 速度最快
     loss = learn(model, train_loader, test_loader, frames=25)
     return {'objs': (loss,)}
 
