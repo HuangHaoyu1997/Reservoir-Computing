@@ -320,14 +320,12 @@ class MLP(nn.Module):
         
         self.relu = nn.ReLU()
         self.fc1 = nn.Linear(N_in, N_hid)
-        self.fc2=nn.Linear(N_hid, N_hid) #2个隐层
-        self.fc3=nn.Linear(N_hid, N_out)
+        self.fc2=nn.Linear(N_hid, N_out) 
     
     def forward(self, x):
         
         x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc2(x)
         return x
 
 

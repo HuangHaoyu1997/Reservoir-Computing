@@ -64,9 +64,8 @@ def train_mlp_readout(model:MLP,
             _, id = torch.max(out.data, 1)
             sum_loss += loss.data
             train_correct+=torch.sum(id==y.data)
-        print('[%d,%d] loss:%.03f' % (epoch + 1, epochs, sum_loss / 30))
-        print('        correct:%.03f%%' % (100 * train_correct / 60000))
-        print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, epochs, sum_loss/30, train_correct/60000))
+        
     model.eval()
     test_correct = 0
     for i in range(5):
@@ -75,7 +74,7 @@ def train_mlp_readout(model:MLP,
         outputs = model(x)
         _, id = torch.max(outputs.data, 1)
         test_correct += torch.sum(id == y.data)
-    print("correct:%.3f%%" % (100 * test_correct / 10000))
+    print("correct:%.4f" % (test_correct/10000))
     
     return train_correct / 60000, test_correct / 10000
 
