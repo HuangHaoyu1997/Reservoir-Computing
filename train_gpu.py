@@ -3,9 +3,10 @@ train the pytorch version Reservoir Computing model in GPUs
 '''
 
 import time
+import torch
 import pickle
 import numpy as np
-from RC import torchRC
+from RC import MLP, torchRC
 from utils import encoding
 from data import MNIST_generation
 from sklearn.metrics import accuracy_score
@@ -26,22 +27,58 @@ def inference(model:torchRC,
     for i, (image, label) in enumerate(data_loader):
         
         print('batch', i)
-        mems, spike = model(image.to(device)) # [frames, batch, N_hid], [frames, batch, N_hid]
-        print(mems.shape, spike.shape)
-        # concat the membrane vector and spike train vector as the image representation
-        concat = np.concatenate((mems, spike), axis=-1)
-        concat = concat.mean(0) # [batch, N_hid]
-        
+        mems, spike = model(image.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
+        # concat membrane and spike train as representation
+        concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
+        concat = concat.mean(1) # [batch, 2*N_hid]
         if spikes is None: spikes = concat # spikes = spike_sum
-        else: spikes = np.concatenate((spikes, concat))
-        
-        # label_ = torch.zeros(batch_size, 10).scatter_(1, label.view(-1, 1), 1).squeeze().numpy()
-        # loss = cross_entropy(label_, outputs)
-        
+        else: spikes = torch.cat((spikes, concat), dim=0)
         labels.extend(label.numpy().tolist())
     # print('Time elasped:', time.time() - start_time)
     
-    return spikes, np.array(labels)
+    # return spikes.detach().cpu().numpy(), np.array(labels)
+    return spikes.detach(), torch.tensor(labels).to(device)
+
+def train_mlp_readout(model:MLP,
+                      epochs,
+                      X_train,
+                      X_test,
+                      y_train,
+                      y_test,):
+    
+    cost = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    for epoch in range(epochs) :
+        sum_loss = 0
+        train_correct = 0
+        for i in range(30):
+            x = X_train[i*2000:(i+1)*2000]
+            y = y_train[i*2000:(i+1)*2000]
+            out = model(x)
+
+            optimizer.zero_grad()
+            loss = cost(out, y)
+            loss.backward()
+            optimizer.step()
+    
+            _, id = torch.max(out.data, 1)
+            sum_loss += loss.data
+            train_correct+=torch.sum(id==y.data)
+        print('[%d,%d] loss:%.03f' % (epoch + 1, epochs, sum_loss / 30))
+        print('        correct:%.03f%%' % (100 * train_correct / 60000))
+        print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    model.eval()
+    test_correct = 0
+    for i in range(5):
+        x = X_test[i*2000:(i+1)*2000]
+        y = y_test[i*2000:(i+1)*2000]
+        outputs = model(x)
+        _, id = torch.max(outputs.data, 1)
+        test_correct += torch.sum(id == y.data)
+    print("correct:%.3f%%" % (100 * test_correct / 10000))
+    
+    return train_correct / 60000, test_correct / 10000
+
 
 def learn_readout(X_train, 
                   X_validation, 
@@ -57,7 +94,7 @@ def learn_readout(X_train,
     lr = LogisticRegression(solver='lbfgs',
                             multi_class='auto', # multinomial
                             verbose=False,
-                            max_iter=100,
+                            max_iter=200,
                             n_jobs=-1,
                             )
     lr.fit(X_train.T, y_train.T)
@@ -70,17 +107,25 @@ def learn_readout(X_train,
             accuracy_score(y_validation_predictions, y_validation.T), \
             # accuracy_score(y_test_predictions, y_test.T)
 
-def learn(model, train_loader, test_loader, frames):
+def learn(model:torchRC, train_loader, test_loader):
     # rs.shape (500, 1000)
     # labels.shape (500,)
     train_rs, train_label = inference(model, train_loader,)
     
     test_rs, test_label = inference(model, test_loader,)
     
-    tr_score, te_score, = learn_readout(train_rs.T, 
-                                         test_rs.T, 
-                                         train_label, 
-                                         test_label)
+    mlp = MLP(2000, 128, 10).to(model.device)
+    tr_score, te_score, = train_mlp_readout(model=mlp, 
+                                            epochs=20,
+                                            X_train=train_rs,
+                                            X_test=test_rs,
+                                            y_train=train_label,
+                                            y_test=test_label)
+    
+    # tr_score, te_score, = learn_readout(train_rs.T, 
+    #                                      test_rs.T, 
+    #                                      train_label, 
+    #                                      test_label)
     print(tr_score, te_score)
     return -te_score # openbox 默认最小化loss
 
@@ -104,7 +149,7 @@ def config_model(config):
 def rollout(config):
     model = config_model(config)
     train_loader, test_loader = MNIST_generation(batch_size=2000) # batch=2000 速度最快
-    loss = learn(model, train_loader, test_loader, frames=25)
+    loss = learn(model, train_loader, test_loader)
     return {'objs': (loss,)}
 
 

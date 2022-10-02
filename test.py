@@ -1,4 +1,4 @@
-from train import *
+from train_gpu import *
 import matplotlib.pyplot as plt
 from utils import *
 
