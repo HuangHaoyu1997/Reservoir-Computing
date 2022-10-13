@@ -44,16 +44,18 @@ def train_mlp_readout(model:MLP,
                       X_train,
                       X_test,
                       y_train,
-                      y_test,):
-    
+                      y_test,
+                      batch_size,
+                      ):
+    iteration = int(60000/batch_size)
     cost = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters())
     for epoch in range(epochs) :
         sum_loss = 0
         train_correct = 0
-        for i in range(30):
-            x = X_train[i*2000:(i+1)*2000]
-            y = y_train[i*2000:(i+1)*2000]
+        for i in range(iteration):
+            x = X_train[i*batch_size:(i+1)*batch_size]
+            y = y_train[i*batch_size:(i+1)*batch_size]
             out = model(x)
 
             optimizer.zero_grad()
@@ -64,13 +66,14 @@ def train_mlp_readout(model:MLP,
             _, id = torch.max(out.data, 1)
             sum_loss += loss.data
             train_correct+=torch.sum(id==y.data)
-        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, epochs, sum_loss/30, train_correct/60000))
+        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, epochs, sum_loss/iteration, train_correct/60000))
         
     model.eval()
+    iteration = int(10000/batch_size)
     test_correct = 0
     for i in range(5):
-        x = X_test[i*2000:(i+1)*2000]
-        y = y_test[i*2000:(i+1)*2000]
+        x = X_test[i*batch_size:(i+1)*batch_size]
+        y = y_test[i*batch_size:(i+1)*batch_size]
         outputs = model(x)
         _, id = torch.max(outputs.data, 1)
         test_correct += torch.sum(id == y.data)
@@ -106,20 +109,23 @@ def learn_readout(X_train,
             accuracy_score(y_validation_predictions, y_validation.T), \
             # accuracy_score(y_test_predictions, y_test.T)
 
-def learn(model:torchRC, train_loader, test_loader):
+def learn(model:torchRC, train_loader, test_loader, batch_size):
     # rs.shape (500, 1000)
     # labels.shape (500,)
+    N_hid = model.N_hid
+    
     train_rs, train_label = inference(model, train_loader,)
     
     test_rs, test_label = inference(model, test_loader,)
     
-    mlp = MLP(2000, 128, 10).to(model.device)
+    mlp = MLP(2*N_hid, 128, 10).to(model.device)
     tr_score, te_score, = train_mlp_readout(model=mlp, 
                                             epochs=20,
                                             X_train=train_rs,
                                             X_test=test_rs,
                                             y_train=train_label,
-                                            y_test=test_label)
+                                            y_test=test_label,
+                                            batch_size=batch_size)
     
     # tr_score, te_score, = learn_readout(train_rs.T, 
     #                                      test_rs.T, 
@@ -130,7 +136,7 @@ def learn(model:torchRC, train_loader, test_loader):
 
 def config_model(config):
     model = torchRC(N_input=28*28,
-                    N_hidden=1000,
+                    N_hidden=100,
                     N_output=10,
                     alpha=config['alpha'],
                     decay=config['decay'],
@@ -147,8 +153,8 @@ def config_model(config):
 
 def rollout(config):
     model = config_model(config)
-    train_loader, test_loader = MNIST_generation(batch_size=2000) # batch=2000 速度最快
-    loss = learn(model, train_loader, test_loader)
+    train_loader, test_loader = MNIST_generation(batch_size=config['batch_size']) # batch=2000 速度最快
+    loss = learn(model, train_loader, test_loader, batch_size=config['batch_size'])
     return {'objs': (loss,)}
 
 

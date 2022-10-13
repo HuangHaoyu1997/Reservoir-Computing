@@ -12,6 +12,8 @@ if __name__ == '__main__':
         'gamma': 1.0,
         'frames': 20,
         'device': 'cuda',
+        'batch_size': 2000,
+        
     }
     t = time.time()
     model = config_model(config)

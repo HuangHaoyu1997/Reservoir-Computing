@@ -63,7 +63,12 @@ def A_initial(N_hid, R, p, gamma, binary=False):
     
     '''
     length = N_hid * N_hid
-    V = allocation(X=10, Y=10, Z=10)
+    
+    # random allocate 3D coordinate to all reservoir neurons
+    # V = allocation(X=10, Y=10, Z=10)
+    V = np.random.uniform(low=0, high=10, size=(N_hid, 3))
+    
+    
     A = np.zeros((N_hid, N_hid), dtype=np.float32)
     
     for i in range(N_hid):
