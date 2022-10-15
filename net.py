@@ -1,4 +1,7 @@
 import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+import math
 
 def developmental_time_window(N, k, gamma, ):
     '''
