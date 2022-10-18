@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 -*-
-from turtle import forward
 import warnings
 
 from config import Config
@@ -9,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, time, torch, pickle
 from scipy.linalg import pinv
-from utils import encoding, A_initial, activation, softmax
 import torch
 import torch.nn as nn
 from utils import *
@@ -114,12 +112,6 @@ class torchRC(nn.Module):
                                                 config.noise_str,
                                                 config,
                                                 ))).to(self.device)
-        
-        # A = nn.Parameter(torch.tensor(A_initial(self.N_hid, 
-        #                                         self.R, 
-        #                                         kwargs['p_in'], 
-        #                                         kwargs['gamma'], 
-        #                                         kwargs['binary']))).to(self.device)
         
         bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
         

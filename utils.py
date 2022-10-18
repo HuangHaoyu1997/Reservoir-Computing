@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from config import Config
-from net import ErdosRenyi, BarabasiAlbert
+from net import ErdosRenyi, BarabasiAlbert, Developmental_Time_Window, RandomNetwork
 import networkx as nx
 
 def torchUniform(low, high, size):
@@ -77,6 +77,7 @@ def A_cluster(N_hid:int,
            'BA',  # Barabasi-Albert Network
            'BAC', # Clusters with Barabasi-Albert networks
            'DTW', # Developmental Time Window for multi-cluster small-world network
+           'RAN', # random network
            ]
     noise: add noise or not
     noise_strength: probability of creating a noise connection
@@ -112,7 +113,15 @@ def A_cluster(N_hid:int,
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = BA
     
     elif type == 'DTW':
-        raise NotImplementedError
+        A = Developmental_Time_Window(N_hid, 
+                                      config.k, 
+                                      config.beta,
+                                      config.R_,
+                                      config.r,
+                                      config.p_self,
+                                      config.omega)
+    elif type == 'RAN':
+        A = RandomNetwork(N_hid, config.R)
 
     # add inhibitory synapses
     for i in range(N_hid):
@@ -135,69 +144,10 @@ def A_cluster(N_hid:int,
     
     if (not binary) and noise:
         A += np.random.uniform(low=-noise_strength, high=noise_strength, size=(N_hid, N_hid))
-        
+    if config.scale:
+        A /= spectral_radius(A)
     return A
 
-
-def A_initial(N_hid, R, p, gamma, binary=False):
-    '''
-    initialize random weights for matrix A
-    p: ratio of inhibitory neurons 抑制性
-    R: distance factor
-    gamma: shape factor of gamma distribution
-    
-    '''
-    length = N_hid * N_hid
-    
-    # random allocate 3D coordinate to all reservoir neurons
-    # V = allocation(X=10, Y=10, Z=10)
-    V = np.random.uniform(low=0, high=10, size=(N_hid, 3))
-    
-    
-    A = np.zeros((N_hid, N_hid), dtype=np.float32)
-    
-    for i in range(N_hid):
-        for j in range(N_hid):
-            # p_distance与distance成反比
-            p_distance = np.exp(-np.sqrt((V[i][0]-V[j][0])**2+
-                                            (V[i][1]-V[j][1])**2+
-                                            (V[i][2]-V[j][2])**2)*R
-                                )
-            # connection
-            if np.random.rand() < p_distance:
-                # 抑制性神经元
-                if np.random.rand() < p:
-                    A[i,j] = -np.random.gamma(gamma)
-                # 兴奋性神经元
-                else:
-                    A[i,j] = np.random.gamma(gamma)
-    
-    # cancel the self-connection
-    for i in range(N_hid):
-        A[i,i] = 0.
-    
-    
-    # 二值矩阵
-    if binary:
-        for i in range(N_hid):
-            for j in range(N_hid):
-                if A[i,j]>0:
-                    A[i,j] = 1.
-                elif A[i,j] < 0:
-                    A[i,j] = -1.
-                elif A[i,j] == 0:
-                    pass
-    A /= spectral_radius(A)
-    
-    # weights = []
-    # for _ in range(length):
-    #     if np.random.rand() < self.p:
-    #         weights.append(np.random.uniform(-1, 0))
-    #     else:
-    #         weights.append(np.random.uniform(0, 1))
-    
-    # weights = np.array(weights).reshape((self.N_hid, self.N_hid))
-    return A
 
 def act(x):
     '''
