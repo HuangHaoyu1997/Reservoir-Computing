@@ -1,7 +1,9 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from config import Config
 from net import ErdosRenyi, BarabasiAlbert
+import networkx as nx
 
 def torchUniform(low, high, size):
     '''
@@ -61,7 +63,8 @@ def A_cluster(N_hid:int,
               binary:bool, 
               type:str, 
               noise:bool, 
-              **kwargs):
+              noise_strength: float,
+              config:Config):
     '''
     generate A with multiple topologies
     
@@ -75,7 +78,8 @@ def A_cluster(N_hid:int,
            'BAC', # Clusters with Barabasi-Albert networks
            'DTW', # Developmental Time Window for multi-cluster small-world network
            ]
-    noise: add
+    noise: add noise or not
+    noise_strength: probability of creating a noise connection
     kwargs:[
         'k',
         'p_ER',
@@ -85,33 +89,32 @@ def A_cluster(N_hid:int,
     k: number of clusters
     
     '''
-    import networkx as nx
+    
     
     if type == 'ER':
-        A = ErdosRenyi(N_hid, kwargs['p_ER'])
+        A = ErdosRenyi(N_hid, config.p_ER)
 
     elif type == 'BA':
-        A = BarabasiAlbert(N_hid, kwargs['m_BA'])
+        A = BarabasiAlbert(N_hid, config.m_BA)
 
     elif type == 'ERC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
-        number_cluster = kwargs['k']
-        npc = int(N_hid/number_cluster) # number of nodes per cluster
-        for k in range(number_cluster):
-            ER = ErdosRenyi(npc, kwargs['p_ER'])
+        npc = int(N_hid/config.k) # number of nodes per cluster
+        for k in range(config.k):
+            ER = ErdosRenyi(npc, config.p_ER)
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = ER
         
     elif type == 'BAC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
-        number_cluster = kwargs['k']
-        npc = int(N_hid/number_cluster) # number of nodes per cluster
-        for k in range(number_cluster):
-            BA = BarabasiAlbert(npc, kwargs['m_BA'])
+        npc = int(N_hid/config.k) # number of nodes per cluster
+        for k in range(config.k):
+            BA = BarabasiAlbert(npc, config.m_BA)
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = BA
     
     elif type == 'DTW':
         raise NotImplementedError
 
+    # add inhibitory synapses
     for i in range(N_hid):
         for j in range(N_hid):
             if A[i,j] != 0:
@@ -121,10 +124,18 @@ def A_cluster(N_hid:int,
                 else: # excitatory
                     if not binary: A[i,j] = np.random.gamma(gamma)
     
-    # # add noise
-    if binary:
+    # add noise
+    if binary and noise:
+        # only add noise to disconnected area
         zeros = np.array(A==0, dtype=np.float32)
-        salt_noise = np.random.choice([-1,0,1], size=(100,100), p=[0.02,0.96,0.02])
+        salt_noise = np.random.choice([-1,0,1], 
+                                      size=(N_hid,N_hid), 
+                                      p=[noise_strength,1-2*noise_strength,noise_strength])
+        A += salt_noise * zeros
+    
+    if (not binary) and noise:
+        A += np.random.uniform(low=-noise_strength, high=noise_strength, size=(N_hid, N_hid))
+        
     return A
 
 

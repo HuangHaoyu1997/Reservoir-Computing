@@ -7,6 +7,7 @@ import torch
 import pickle
 import numpy as np
 from RC import MLP, torchRC
+from config import Config
 from utils import encoding
 from data import MNIST_generation
 from sklearn.metrics import accuracy_score
@@ -40,22 +41,21 @@ def inference(model:torchRC,
     return spikes.detach(), torch.tensor(labels).to(device)
 
 def train_mlp_readout(model:MLP,
-                      epochs,
+                      config:Config,
                       X_train,
                       X_test,
                       y_train,
                       y_test,
-                      batch_size,
                       ):
-    iteration = int(60000/batch_size)
+    iteration = int(60000/config.batch_size)
     cost = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters())
-    for epoch in range(epochs) :
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
+    for epoch in range(config.epoch) :
         sum_loss = 0
         train_correct = 0
         for i in range(iteration):
-            x = X_train[i*batch_size:(i+1)*batch_size]
-            y = y_train[i*batch_size:(i+1)*batch_size]
+            x = X_train[i*config.batch_size:(i+1)*config.batch_size]
+            y = y_train[i*config.batch_size:(i+1)*config.batch_size]
             out = model(x)
 
             optimizer.zero_grad()
@@ -66,18 +66,18 @@ def train_mlp_readout(model:MLP,
             _, id = torch.max(out.data, 1)
             sum_loss += loss.data
             train_correct+=torch.sum(id==y.data)
-        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, epochs, sum_loss/iteration, train_correct/60000))
+        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/60000))
         
     model.eval()
-    iteration = int(10000/batch_size)
+    iteration = int(10000/config.batch_size)
     test_correct = 0
-    for i in range(5):
-        x = X_test[i*batch_size:(i+1)*batch_size]
-        y = y_test[i*batch_size:(i+1)*batch_size]
+    for i in range(iteration):
+        x = X_test[i*config.batch_size:(i+1)*config.batch_size]
+        y = y_test[i*config.batch_size:(i+1)*config.batch_size]
         outputs = model(x)
         _, id = torch.max(outputs.data, 1)
         test_correct += torch.sum(id == y.data)
-    print("correct:%.4f" % (test_correct/10000))
+    print("test correct:%.4f" % (test_correct/10000))
     
     return train_correct / 60000, test_correct / 10000
 
@@ -109,7 +109,7 @@ def learn_readout(X_train,
             accuracy_score(y_validation_predictions, y_validation.T), \
             # accuracy_score(y_test_predictions, y_test.T)
 
-def learn(model:torchRC, train_loader, test_loader, batch_size):
+def learn(model:torchRC, train_loader, test_loader, config:Config):
     # rs.shape (500, 1000)
     # labels.shape (500,)
     N_hid = model.N_hid
@@ -120,12 +120,11 @@ def learn(model:torchRC, train_loader, test_loader, batch_size):
     
     mlp = MLP(2*N_hid, 128, 10).to(model.device)
     tr_score, te_score, = train_mlp_readout(model=mlp, 
-                                            epochs=20,
+                                            config=config,
                                             X_train=train_rs,
                                             X_test=test_rs,
                                             y_train=train_label,
-                                            y_test=test_label,
-                                            batch_size=batch_size)
+                                            y_test=test_label)
     
     # tr_score, te_score, = learn_readout(train_rs.T, 
     #                                      test_rs.T, 
@@ -134,27 +133,11 @@ def learn(model:torchRC, train_loader, test_loader, batch_size):
     print(tr_score, te_score)
     return -te_score # openbox 默认最小化loss
 
-def config_model(config):
-    model = torchRC(N_input=28*28,
-                    N_hidden=100,
-                    N_output=10,
-                    alpha=config['alpha'],
-                    decay=config['decay'],
-                    threshold=config['thr'],
-                    R=config['R'],
-                    p=config['p'],
-                    gamma=config['gamma'],
-                    sub_thr=False,
-                    binary=False,
-                    frames=config['frames'],
-                    device=config['device'],
-                    )
-    return model
-
 def rollout(config):
-    model = config_model(config)
-    train_loader, test_loader = MNIST_generation(batch_size=config['batch_size']) # batch=2000 速度最快
-    loss = learn(model, train_loader, test_loader, batch_size=config['batch_size'])
+    model = torchRC(config)
+
+    train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
+    loss = learn(model, train_loader, test_loader, config)
     return {'objs': (loss,)}
 
 

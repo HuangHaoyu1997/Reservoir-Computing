@@ -1,6 +1,8 @@
 # -*- coding: UTF-8 -*-
 from turtle import forward
 import warnings
+
+from config import Config
 warnings.filterwarnings("ignore")
 
 import numpy as np
@@ -18,41 +20,21 @@ class torchRC(nn.Module):
     '''
     Reservoir Computing Model in pytorch version
     '''
-    def __init__(self,
-                 N_input, # 输入维度
-                 N_hidden, # reservoir神经元数量
-                 N_output, # 输出维度
-                 alpha, # memory factor
-                 decay, # membrane potential decay factor
-                 threshold, # firing threshold
-                 R, # distance factor
-                 p, # ratio of inhibitory neurons
-                 gamma,
-                 sub_thr, # when firing, subtract threshold to membrane potential
-                 binary, # binary A matrix
-                 frames,
-                 device,
-                 ) -> None:
+    def __init__(self, config:Config) -> None:
         super(torchRC, self).__init__()
+        self.config = config
+        self.N_in = config.N_in
+        self.N_hid = config.N_hid
+        self.N_out = config.N_out
+        self.alpha = config.alpha
+        self.decay = config.decay
+        self.thr = config.thr
+        self.R = config.R
+        self.sub_thr = config.sub_thr
+        self.frames = config.frames
+        self.device = config.device
         
-        self.N_in = N_input
-        self.N_hid = N_hidden
-        self.N_out = N_output
-        self.alpha = alpha
-        self.decay = decay
-        self.thr = threshold
-        self.R = R
-        self.p = p
-        self.gamma = gamma
-        self.random_init = True, # 初始状态是否随机初始化
-        self.sub_thr = sub_thr
-        self.binary = binary
-        self.frames = frames
-        self.device = device
-        
-        self.W_in, self.A, self.bias = self.reset()
-        zero_mask = self.A==0
-        
+        self.W_in, self.A, self.bias = self.reset(config)
         
     def membrane(self, mem, x, spike):
         '''
@@ -74,15 +56,11 @@ class torchRC(nn.Module):
     def forward(self, x):
         '''
         inference function of spiking version
-        
         x: input tensor [batch, 1, 28, 28]
         
         return
-        
         mems: [frames, batch, N_hid]
-        
         spike_train: [frames, batch, N_hid]
-        
         '''
         batch = x.shape[0]
         x_enc = None
@@ -116,7 +94,7 @@ class torchRC(nn.Module):
         
         return mems, spike_train
     
-    def reset(self,):
+    def reset(self, config:Config):
         '''
         random initialization:
         W_in:      input weight matrix
@@ -127,19 +105,25 @@ class torchRC(nn.Module):
         
         '''
         W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
-        A = nn.Parameter(torch.tensor(A_initial(self.N_hid, 
-                                                self.R, 
-                                                self.p, 
-                                                self.gamma, 
-                                                self.binary))).to(self.device)
+        A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
+                                                config.p_in,
+                                                config.gamma,
+                                                config.binary,
+                                                config.type,
+                                                config.noise,
+                                                config.noise_str,
+                                                config,
+                                                ))).to(self.device)
+        
+        # A = nn.Parameter(torch.tensor(A_initial(self.N_hid, 
+        #                                         self.R, 
+        #                                         kwargs['p_in'], 
+        #                                         kwargs['gamma'], 
+        #                                         kwargs['binary']))).to(self.device)
         
         bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
         
-        # 用系数0.0533缩放，以保证谱半径ρ(A)=1.0
-        self.W_out = np.random.uniform(low=-0.0533*np.ones((self.N_out, self.N_hid)), 
-                                       high=0.0533*np.ones((self.N_out, self.N_hid)))
-        
-        # 如果decay不是一个非零实数,则初始化为随机向量
+        # if self.decay is not a non-negative real number, initialize it to random vector
         if not self.decay:
             self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
         return W_in, A, bias

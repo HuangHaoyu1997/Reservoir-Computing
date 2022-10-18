@@ -3,20 +3,8 @@ import matplotlib.pyplot as plt
 from utils import *
 
 if __name__ == '__main__':
-    config = {
-        'alpha':0.2,
-        'decay':0.5,
-        'thr': 0.5,
-        'R': 0.4,
-        'p': 0.20,
-        'gamma': 1.0,
-        'frames': 20,
-        'device': 'cuda',
-        'batch_size': 2000,
-        
-    }
+    from config import Config
     t = time.time()
-    model = config_model(config)
     # print(1000**2-(model.A==0).sum())
     # print(spectral_radius(model.A))
     
@@ -29,6 +17,6 @@ if __name__ == '__main__':
     # inference(model, train_loader, frames=20)
     
     
-    rollout(config)
+    rollout(Config)
     print(time.time()-t)
 
