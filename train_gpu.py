@@ -48,9 +48,11 @@ def train_mlp_readout(model:MLP,
                       y_test,
                       ):
     iteration = int(60000/config.batch_size)
+    iter = int(10000/config.batch_size)
     cost = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     for epoch in range(config.epoch) :
+        model.train()
         sum_loss = 0
         train_correct = 0
         for i in range(iteration):
@@ -66,19 +68,17 @@ def train_mlp_readout(model:MLP,
             _, id = torch.max(out.data, 1)
             sum_loss += loss.data
             train_correct+=torch.sum(id==y.data)
-        print('[%d,%d] loss:%.03f, correct:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/60000))
         
-    model.eval()
-    iteration = int(10000/config.batch_size)
-    test_correct = 0
-    for i in range(iteration):
-        x = X_test[i*config.batch_size:(i+1)*config.batch_size]
-        y = y_test[i*config.batch_size:(i+1)*config.batch_size]
-        outputs = model(x)
-        _, id = torch.max(outputs.data, 1)
-        test_correct += torch.sum(id == y.data)
-    print("test correct:%.4f" % (test_correct/10000))
-    
+        model.eval()
+        test_correct = 0
+        for i in range(iter):
+            x = X_test[i*config.batch_size:(i+1)*config.batch_size]
+            y = y_test[i*config.batch_size:(i+1)*config.batch_size]
+            outputs = model(x)
+            _, id = torch.max(outputs.data, 1)
+            test_correct += torch.sum(id == y.data)
+        print('[%d,%d] loss:%.03f, train acc:%.4f, test acc:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/60000, test_correct/10000))
+        
     return train_correct / 60000, test_correct / 10000
 
 

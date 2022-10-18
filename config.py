@@ -1,6 +1,6 @@
 class Config:
     N_in = 28*28      # input dim
-    N_hid = 500       # hidden dim / number of reservoir neuron
+    N_hid = 200       # hidden dim / number of reservoir neuron
     N_out = 10        # output dim
     alpha = 0.2       # memory factor
     decay = 0.5       # membrane potential decay factor
@@ -13,7 +13,7 @@ class Config:
     batch_size = 2000 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
     binary = False    # binary matrix of reservoir A
-    type = 'ERC'      # type of A topology
+    type = 'BA'      # type of A topology
                       # 'ER',  # Erdos-Renyi Random Network
                       # 'ERC', # Clusters with Erdos-Renyi Networks
                       # 'BA',  # Barabasi-Albert Network
@@ -27,5 +27,5 @@ class Config:
     m_BA = 2          # number of edges to attach from a new node to existing nodes
     k = 3             # number of clusters in A
     
-    epoch = 100        # training epoch for readout layer mlp
+    epoch = 200        # training epoch for readout layer mlp
     lr = 2e-3         # learning rate for mlp

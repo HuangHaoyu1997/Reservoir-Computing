@@ -32,7 +32,7 @@ def ErdosRenyi(N, p):
     '''
     # H = nx.fast_gnp_random_graph(N, p)
     H = nx.erdos_renyi_graph(N, p)
-    A = nx.to_numpy_matrix(H)
+    A = nx.to_numpy_matrix(H, dtype=np.float32)
     return A
 
 def BarabasiAlbert(N, m):
@@ -46,7 +46,7 @@ def BarabasiAlbert(N, m):
     return binary adjacency matrix
     '''
     H = nx.barabasi_albert_graph(N, m)
-    A = nx.to_numpy_matrix(H)
+    A = nx.to_numpy_matrix(H, dtype=np.float32)
     return A
 
 if __name__ == '__main__':
