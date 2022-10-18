@@ -7,8 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-class HR:
+class Hindmarsh_Rose:
     '''
+    Hindmarsh-Rose model
+    
     dx/dt = y + φ(x) - z + I
     dy/dt = ψ(x) - y
     dz/dt = r[s(x - x_R) - z] 
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         'xR': -8/5,
     }
     T = 1000
-    model = HR(params, dt=0.1)
+    model = Hindmarsh_Rose(params, dt=0.1)
     for i in range(T):
         model.step(I=2 if i<500 else 0) # np.random.uniform(0,1)
     
