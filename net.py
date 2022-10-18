@@ -23,5 +23,31 @@ def developmental_time_window(N, k, gamma, ):
     G
     
 
-if __name__ == '__main__':
+def ErdosRenyi(N, p):
+    '''
+    generate erdos-renyi random network
+    N: number of nodes
+    p: probability of edge creation
+    return binary adjacency matrix
+    '''
+    # H = nx.fast_gnp_random_graph(N, p)
+    H = nx.erdos_renyi_graph(N, p)
+    A = nx.to_numpy_matrix(H)
+    return A
+
+def BarabasiAlbert(N, m):
+    '''
+    generate barabasi albert scale-free network
     
+    N: number of nodes
+    
+    m: number of edges to attach from a new node to existing nodes
+    
+    return binary adjacency matrix
+    '''
+    H = nx.barabasi_albert_graph(N, m)
+    A = nx.to_numpy_matrix(H)
+    return A
+
+if __name__ == '__main__':
+    pass

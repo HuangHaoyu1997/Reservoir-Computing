@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from net import ErdosRenyi, BarabasiAlbert
 
 def torchUniform(low, high, size):
     '''
@@ -53,6 +54,79 @@ def allocation(X, Y, Z):
     V = V.reshape(X * Y * Z)
     np.random.shuffle(V)
     return V
+
+def A_cluster(N_hid:int, 
+              p_in:float, 
+              gamma:float, 
+              binary:bool, 
+              type:str, 
+              noise:bool, 
+              **kwargs):
+    '''
+    generate A with multiple topologies
+    
+    N_hid: number of neurons in reservoir
+    p: ratio of inhibitory neyrons
+    gamma: shape factor of gamma distribution in A weights
+    binary: binary matrix A
+    type: ['ER',  # Erdos-Renyi Random Network
+           'ERC', # Clusters with Erdos-Renyi Networks
+           'BA',  # Barabasi-Albert Network
+           'BAC', # Clusters with Barabasi-Albert networks
+           'DTW', # Developmental Time Window for multi-cluster small-world network
+           ]
+    noise: add
+    kwargs:[
+        'k',
+        'p_ER',
+        'm_BA',
+        
+    ]
+    k: number of clusters
+    
+    '''
+    import networkx as nx
+    
+    if type == 'ER':
+        A = ErdosRenyi(N_hid, kwargs['p_ER'])
+
+    elif type == 'BA':
+        A = BarabasiAlbert(N_hid, kwargs['m_BA'])
+
+    elif type == 'ERC':
+        A = np.zeros((N_hid, N_hid), dtype=np.float32)
+        number_cluster = kwargs['k']
+        npc = int(N_hid/number_cluster) # number of nodes per cluster
+        for k in range(number_cluster):
+            ER = ErdosRenyi(npc, kwargs['p_ER'])
+            A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = ER
+        
+    elif type == 'BAC':
+        A = np.zeros((N_hid, N_hid), dtype=np.float32)
+        number_cluster = kwargs['k']
+        npc = int(N_hid/number_cluster) # number of nodes per cluster
+        for k in range(number_cluster):
+            BA = BarabasiAlbert(npc, kwargs['m_BA'])
+            A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = BA
+    
+    elif type == 'DTW':
+        raise NotImplementedError
+
+    for i in range(N_hid):
+        for j in range(N_hid):
+            if A[i,j] != 0:
+                if np.random.rand() <= p_in: # inhibitory
+                    if binary: A[i,j] = -1
+                    else:      A[i,j] = -np.random.gamma(gamma)
+                else: # excitatory
+                    if not binary: A[i,j] = np.random.gamma(gamma)
+    
+    # # add noise
+    if binary:
+        zeros = np.array(A==0, dtype=np.float32)
+        salt_noise = np.random.choice([-1,0,1], size=(100,100), p=[0.02,0.96,0.02])
+    return A
+
 
 def A_initial(N_hid, R, p, gamma, binary=False):
     '''
@@ -132,3 +206,12 @@ def cross_entropy(p, q):
     CELoss = -∑ p(x)*log(q(x))
     '''
     return -(p * np.log(q)).sum()
+
+if __name__ == '__main__':
+    A = A_cluster(N_hid=100,
+                  p_in=0.2,
+                  gamma=1.0,
+                  binary=False,
+                  type='ER',
+                  p_ER=0.2,)
+    print(A.shape)
