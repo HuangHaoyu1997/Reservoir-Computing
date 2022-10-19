@@ -7,6 +7,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+class Izhikevich:
+    '''
+    v' = 0.04v^2 + 5v + 140 - u + I
+    u' = a(bv - u)
+    '''
+    def __init__(self) -> None:
+        pass
+
+def IzhikevichModel(v0, u0, dt, I, a, b):
+    '''
+    step function of Izhikevich model
+    v' = 0.04v^2 + 5v + 140 - u + I
+    u' = a(bv - u)
+    '''
+    v = v0 + dt * (0.04*v0**2 + 5*v0 + 140 - u0 + I)
+    u = u0 + dt * a * (b * v0 - u0)
+    return v, u
+
+def IzhikevichSimulation(v0, u0, dt, a, b, c, d, T, thr):
+    vs, us, spikes = [], [], []
+    T = np.arange(0, T, dt)
+    for t in T:
+        I = 5
+        v, u = IzhikevichModel(v0, u0, dt, I, a, b)
+        if v>= thr:
+            spikes.append(1)
+            v = c
+            u += d
+        else: spikes.append(0)
+        
+        vs.append(v)
+        us.append(u)
+        v0 = v
+        u0 = u
+    return vs, us, spikes
+
 class Hindmarsh_Rose:
     '''
     Hindmarsh-Rose model
@@ -59,22 +95,50 @@ class Hindmarsh_Rose:
         self.zs.append(self.z)
 
 if __name__ == '__main__':
-    params = {
-        'a': 1., 
-        'b': 3., 
-        'c': 1., 
-        'd': 5., 
-        's': 4., 
-        'r': 0.001,
-        'xR': -8/5,
-    }
-    T = 1000
-    model = Hindmarsh_Rose(params, dt=0.1)
-    for i in range(T):
-        model.step(I=2 if i<500 else 0) # np.random.uniform(0,1)
+    # params = {
+    #     'a': 1., 
+    #     'b': 3., 
+    #     'c': 1., 
+    #     'd': 5., 
+    #     's': 4., 
+    #     'r': 0.001,
+    #     'xR': -8/5,
+    # }
+    # T = 30
+    # model = Hindmarsh_Rose(params, dt=0.1)
+    # for i in range(T):
+    #     model.step(I=2 if i<20 else 0) # np.random.uniform(0,1)
     
-    plt.plot(model.xs)
-    plt.plot(model.xs[np.array(model.xs)>2.3],'.')
-    plt.grid()
-    plt.savefig('HR.png')
-    print((np.array(model.xs)>2.3).sum())
+    # plt.subplot(121)
+    # plt.plot(model.xs)
+    # # plt.plot(model.xs[np.array(model.xs)>2.3],'.')
+    # plt.grid()
+    
+    # plt.subplot(122)
+    # spikes = [1 if x >2.3 else 0 for x in model.xs]
+    # plt.plot(spikes,'.')
+    # print((np.array(model.xs)>2.3).sum())
+    
+    # plt.savefig('HR.png')
+    
+    
+    
+    vs, us, spikes = IzhikevichSimulation(v0=-65,
+                                            u0=0.2*-65,
+                                            dt=0.01,
+                                            a=0.02,
+                                            b=0.2,
+                                            c=-65,
+                                            d=2,
+                                            T=1000,
+                                            thr=30)
+    T = np.arange(0, 1000, 0.01)
+    plt.subplot(311)
+    plt.plot(T, vs)
+    plt.subplot(312)
+    plt.plot(T, us)
+    plt.subplot(313)
+    plt.plot(T, spikes)
+    
+    plt.savefig('IZH.png')
+    print(np.sum(np.array(spikes)==1))
