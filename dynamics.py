@@ -15,30 +15,54 @@ class Izhikevich:
     def __init__(self) -> None:
         pass
 
-def IzhikevichModel(v0, u0, dt, I, a, b):
+def IzhikevichModel(v0, u0, dt, I, a, b, c, d, spike):
     '''
     step function of Izhikevich model
     v' = 0.04v^2 + 5v + 140 - u + I
     u' = a(bv - u)
     '''
+    if spike:
+        v0 = c
+        u0 += d
     v = v0 + dt * (0.04*v0**2 + 5*v0 + 145 - u0 + I)
     u = u0 + dt * a * (b * v0 - u0)
-    return v, u
+    return v, u 
 
+def membrane(self, mem, x, spike):
+    '''
+    update membrane voltage for reservoir neurons
+    
+    mem   [batch, N_hid]
+    x     [batch, N_hid]
+    spike [batch, N_hid]
+    '''
+    # print(mem.shape, spike.shape, x.shape)
+    # batch = mem.shape[0]
+    # decay = np.array([self.decay for _ in range(batch)])
+    mem = mem * self.decay - self.thr * (1-spike) + x # 
+    # mem = mem * self.decay * (1-spike) + x
+    
+    spike = torch.tensor(mem>self.thr, dtype=torch.float32)
+    return mem, spike
+
+def LIF(mem, x, spike):
+    
+    pass
 def IzhikevichSimulation(v0, u0, dt, a, b, c, d, T, thr):
     vs, us, spikes = [], [], []
     T = np.arange(0, T, dt)
     for t in T:
         I = np.random.uniform(-1,1)
-        v, u = IzhikevichModel(v0, u0, dt, I, a, b)
-        if v>= thr:
-            spikes.append(1)
-            v = c
-            u += d
-        else: spikes.append(0)
+        v, u, s = IzhikevichModel(v0, u0, dt, I, a, b, c, d, thr)
+        # if v>= thr:
+        #     spikes.append(1)
+        #     v = c
+        #     u += d
+        # else: spikes.append(0)
         
         vs.append(v)
         us.append(u)
+        spikes.append(s)
         v0 = v
         u0 = u
     return vs, us, spikes
@@ -133,6 +157,7 @@ if __name__ == '__main__':
                                             T=1000,
                                             thr=30)
     T = np.arange(0, 1000, 0.01)
+    print(len(T), len(vs), len(us), len(spikes))
     plt.subplot(311)
     plt.plot(T, vs)
     plt.subplot(312)

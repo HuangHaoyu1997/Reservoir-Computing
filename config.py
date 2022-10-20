@@ -6,9 +6,8 @@ class Config:
     N_hid = 200       # hidden dim / number of reservoir neuron
     N_out = 10        # output dim
     alpha = 0.2       # memory factor
-    decay = 0.5       # membrane potential decay factor
-    thr = 0.5         # firing threshold
-    
+
+    layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
     frames = 30       # static img to event-based frames
@@ -46,3 +45,7 @@ class Config:
     Izh_b = 0.2       # [0.1, 0.3]
     Izh_c = -65       # [-70, -45]
     Izh_d = 8         # [0.02, 10]
+    Izh_thr = 30      # [20, 40]
+    
+    LIF_decay = 0.5       # LIF membrane potential decay factor
+    LIF_thr = 0.5         # firing threshold

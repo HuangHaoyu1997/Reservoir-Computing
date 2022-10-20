@@ -21,14 +21,25 @@ def inference(model:torchRC,
     给定数据集和模型, 推断reservoir state vector
     '''
     device = model.device
+    frames = model.frames
+    device = model.device
+    N_in = model.N_in
     # start_time = time.time()
     labels = []
     spikes = None
     
     for i, (image, label) in enumerate(data_loader):
-        
         print('batch', i)
-        mems, spike = model(image.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
+        batch = image.shape[0]
+        x_enc = None
+        for _ in range(frames):
+            spike = (image > torch.rand(image.size())).float()
+            if x_enc is None: x_enc = spike
+            else: x_enc = torch.cat((x_enc, spike), dim=1)
+        # print('x_enc,', x_enc.shape, batch, frames, N_in)
+        x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
+        
+        mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
         # concat membrane and spike train as representation
         concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
         concat = concat.mean(1) # [batch, 2*N_hid]
