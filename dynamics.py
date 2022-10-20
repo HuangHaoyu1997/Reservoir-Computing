@@ -21,7 +21,7 @@ def IzhikevichModel(v0, u0, dt, I, a, b):
     v' = 0.04v^2 + 5v + 140 - u + I
     u' = a(bv - u)
     '''
-    v = v0 + dt * (0.04*v0**2 + 5*v0 + 140 - u0 + I)
+    v = v0 + dt * (0.04*v0**2 + 5*v0 + 145 - u0 + I)
     u = u0 + dt * a * (b * v0 - u0)
     return v, u
 
@@ -29,7 +29,7 @@ def IzhikevichSimulation(v0, u0, dt, a, b, c, d, T, thr):
     vs, us, spikes = [], [], []
     T = np.arange(0, T, dt)
     for t in T:
-        I = 5
+        I = np.random.uniform(-1,1)
         v, u = IzhikevichModel(v0, u0, dt, I, a, b)
         if v>= thr:
             spikes.append(1)

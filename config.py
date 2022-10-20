@@ -26,6 +26,7 @@ class Config:
     noise = True      # add noise in A
     noise_str = 0.05  # noise strength
     
+    # topology settings
     p_ER = 0.2        # connection probability when creating ER graph
     m_BA = 2          # number of edges to attach from a new node to existing nodes
     k = 3             # number of clusters in A
@@ -38,3 +39,10 @@ class Config:
     
     epoch = 200       # training epoch for readout layer mlp
     lr = 2e-3         # learning rate for mlp
+    
+    # dynamics
+    neuro_type = 'LIF'# 'LIF', 'IZH', 'HH', 'Hybrid'
+    Izh_a = 0.02      # [0.01, 0.15]
+    Izh_b = 0.2       # [0.1, 0.3]
+    Izh_c = -65       # [-70, -45]
+    Izh_d = 8         # [0.02, 10]
