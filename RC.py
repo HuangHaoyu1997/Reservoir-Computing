@@ -110,7 +110,10 @@ class torchRC(nn.Module):
         '''
         W_ins, As, Bias = [], [], []
         for i in range(config.layer):
-            W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+            if i == 0: # first layer, input dim -> hidden dim
+                W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+            else:      # second layer, hidden dim -> hidden dim
+                W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
             A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
                                                     config.p_in,
                                                     config.gamma,
@@ -122,6 +125,7 @@ class torchRC(nn.Module):
                                                     ))).to(self.device)
             
             bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            
             W_ins.append(W_in)
             As.append(A)
             Bias.append(bias)
