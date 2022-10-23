@@ -3148,3 +3148,1073 @@
 })
 , objs=[2147483647], trial_state=1, elapsed_time=9.847592830657959).
 [INFO] [2022-09-17 23:09:28,718] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:19,657] [AsyncBatchAdvisor] === [BO auto selection] === surrogate_type: gp. acq_type: ei. acq_optimizer_type: local_random.
+[INFO] [2022-10-24 07:18:19,953] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 0.
+[INFO] [2022-10-24 07:18:19,954] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 1.
+[INFO] [2022-10-24 07:18:19,957] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:18:19,958] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:31,704] [OpenBox-parallel_async] Update observation 1: Observation(config=Configuration(values={
+  'alpha': 0.49501919387736915,
+  'binary': 1,
+  'decay': 0.20035331449027272,
+  'gamma': 0.8900467621678161,
+  'k': 10,
+  'm_BA': 5,
+  'noise': 0.29086550754502283,
+  'p_in': 0.6868805127560949,
+  'thr': 0.4098487825772983,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=3.949882984161377).
+[INFO] [2022-10-24 07:18:31,712] [OpenBox-parallel_async] Update observation 2: Observation(config=Configuration(values={
+  'alpha': 0.9678987590658086,
+  'binary': 1,
+  'decay': 1.9333316443549973,
+  'gamma': 0.8902380939452399,
+  'k': 9,
+  'm_BA': 9,
+  'noise': 0.34913424498060475,
+  'p_in': 0.8919470350716374,
+  'thr': 1.1101091568206352,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=4.850694417953491).
+[INFO] [2022-10-24 07:18:31,716] [OpenBox-parallel_async] Update observation 3: Observation(config=Configuration(values={
+  'alpha': 0.9395311343098962,
+  'binary': 0,
+  'decay': 0.550690221443856,
+  'gamma': 1.3902854871759731,
+  'k': 9,
+  'm_BA': 1,
+  'noise': 0.9823069969167794,
+  'p_in': 0.9527834342224212,
+  'thr': 0.5229124204658822,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=4.850695371627808).
+[INFO] [2022-10-24 07:18:31,720] [OpenBox-parallel_async] Update observation 4: Observation(config=Configuration(values={
+  'alpha': 0.2,
+  'binary': 0,
+  'decay': 0.5,
+  'gamma': 1.0,
+  'k': 3,
+  'm_BA': 2,
+  'noise': 0.05,
+  'p_in': 0.2,
+  'thr': 0.7,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=4.852694034576416).
+[INFO] [2022-10-24 07:18:31,900] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 0.
+[INFO] [2022-10-24 07:18:31,901] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 1.
+[INFO] [2022-10-24 07:18:31,902] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:18:31,904] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:32,608] [OpenBox-parallel_async] Update observation 5: Observation(config=Configuration(values={
+  'alpha': 0.08209107607998878,
+  'binary': 1,
+  'decay': 0.49086141642005,
+  'gamma': 0.5802072203858006,
+  'k': 10,
+  'm_BA': 3,
+  'noise': 0.5370338828617875,
+  'p_in': 0.10160396969498187,
+  'thr': 0.7779018522537502,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.7019767761230469).
+[INFO] [2022-10-24 07:18:32,829] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:34,282] [OpenBox-parallel_async] Update observation 6: Observation(config=Configuration(values={
+  'alpha': 0.5570159289189247,
+  'binary': 0,
+  'decay': 0.5496188542134579,
+  'gamma': 1.2971963094078827,
+  'k': 7,
+  'm_BA': 10,
+  'noise': 0.9866766324632597,
+  'p_in': 0.9499682592116201,
+  'thr': 0.18967465381550408,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.3734261989593506).
+[INFO] [2022-10-24 07:18:34,393] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:34,662] [OpenBox-parallel_async] Update observation 7: Observation(config=Configuration(values={
+  'alpha': 0.5121443016049702,
+  'binary': 0,
+  'decay': 0.02487213040737335,
+  'gamma': 1.036074423719311,
+  'k': 5,
+  'm_BA': 4,
+  'noise': 0.7423322350401478,
+  'p_in': 0.853230816580548,
+  'thr': 0.8533573526915987,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.74977970123291).
+[INFO] [2022-10-24 07:18:34,699] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:34,938] [OpenBox-parallel_async] Update observation 8: Observation(config=Configuration(values={
+  'alpha': 0.9659014762808125,
+  'binary': 1,
+  'decay': 0.7829636786563894,
+  'gamma': 0.23354832444056428,
+  'k': 3,
+  'm_BA': 9,
+  'noise': 0.052929754992056655,
+  'p_in': 0.8457375199130945,
+  'thr': 0.9809464270776975,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.1062324047088623).
+[INFO] [2022-10-24 07:18:34,985] [OpenBox-parallel_async] Update observation 9: Observation(config=Configuration(values={
+  'alpha': 0.8852545877485405,
+  'binary': 0,
+  'decay': 1.4593252432779933,
+  'gamma': 0.890790078148628,
+  'k': 5,
+  'm_BA': 6,
+  'noise': 0.8363789537078853,
+  'p_in': 0.6144758424942425,
+  'thr': 0.24553663396273873,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=3.0812065601348877).
+[INFO] [2022-10-24 07:18:35,009] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:18:35,011] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:36,450] [OpenBox-parallel_async] Update observation 10: Observation(config=Configuration(values={
+  'alpha': 0.6571992255330439,
+  'binary': 1,
+  'decay': 1.0663820911148052,
+  'gamma': 1.5561503434763593,
+  'k': 9,
+  'm_BA': 5,
+  'noise': 0.1451671520304525,
+  'p_in': 0.6940749607688108,
+  'thr': 0.6243777950276805,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.7450475692749023).
+[INFO] [2022-10-24 07:18:36,563] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:36,622] [OpenBox-parallel_async] Update observation 11: Observation(config=Configuration(values={
+  'alpha': 0.8579927572049874,
+  'binary': 0,
+  'decay': 0.6932104594383348,
+  'gamma': 0.8178784295875285,
+  'k': 7,
+  'm_BA': 6,
+  'noise': 0.5135838553662347,
+  'p_in': 0.7667825070235256,
+  'thr': 1.762076618291267,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.2238729000091553).
+[INFO] [2022-10-24 07:18:36,778] [OpenBox-parallel_async] Update observation 12: Observation(config=Configuration(values={
+  'alpha': 0.677660495711079,
+  'binary': 1,
+  'decay': 1.7545217591606863,
+  'gamma': 1.4785607633813167,
+  'k': 2,
+  'm_BA': 6,
+  'noise': 0.046019914772667536,
+  'p_in': 0.3428284249107979,
+  'thr': 0.010418567320579442,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.7616236209869385).
+[INFO] [2022-10-24 07:18:36,878] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:18:36,879] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:37,269] [OpenBox-parallel_async] Update observation 13: Observation(config=Configuration(values={
+  'alpha': 0.5814009284377405,
+  'binary': 1,
+  'decay': 1.7060354306748917,
+  'gamma': 1.9266457238685468,
+  'k': 6,
+  'm_BA': 6,
+  'noise': 0.2015232799375598,
+  'p_in': 0.8085616256158901,
+  'thr': 0.16138396847776115,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.2526051998138428).
+[INFO] [2022-10-24 07:18:37,494] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:37,720] [OpenBox-parallel_async] Update observation 14: Observation(config=Configuration(values={
+  'alpha': 0.45174302390258747,
+  'binary': 1,
+  'decay': 1.8610190182153399,
+  'gamma': 0.8637924146778195,
+  'k': 10,
+  'm_BA': 3,
+  'noise': 0.7983621966964937,
+  'p_in': 0.7789497227526732,
+  'thr': 1.4514406953913226,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8369626998901367).
+[INFO] [2022-10-24 07:18:37,809] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:38,618] [OpenBox-parallel_async] Update observation 15: Observation(config=Configuration(values={
+  'alpha': 0.38587616053807805,
+  'binary': 1,
+  'decay': 0.7505152228505267,
+  'gamma': 1.9888887116359968,
+  'k': 8,
+  'm_BA': 1,
+  'noise': 0.324997372034171,
+  'p_in': 0.8219076424601824,
+  'thr': 0.13801586218227868,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.734492301940918).
+[INFO] [2022-10-24 07:18:38,752] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:39,126] [OpenBox-parallel_async] Update observation 16: Observation(config=Configuration(values={
+  'alpha': 0.9190489406178929,
+  'binary': 1,
+  'decay': 0.48872521805567537,
+  'gamma': 0.20401804042257865,
+  'k': 6,
+  'm_BA': 5,
+  'noise': 0.2194494279895196,
+  'p_in': 0.9136461466003668,
+  'thr': 1.1334777950191226,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.557187557220459).
+[INFO] [2022-10-24 07:18:39,380] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:39,677] [OpenBox-parallel_async] Update observation 17: Observation(config=Configuration(values={
+  'alpha': 0.4391358985952063,
+  'binary': 0,
+  'decay': 1.733001769729498,
+  'gamma': 1.3656184522816182,
+  'k': 6,
+  'm_BA': 5,
+  'noise': 0.6260649508552417,
+  'p_in': 0.7297115564853398,
+  'thr': 1.2637043345135843,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.86250901222229).
+[INFO] [2022-10-24 07:18:39,693] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:40,212] [OpenBox-parallel_async] Update observation 18: Observation(config=Configuration(values={
+  'alpha': 0.18685486632194448,
+  'binary': 0,
+  'decay': 0.15733878668073475,
+  'gamma': 1.1658607837754182,
+  'k': 3,
+  'm_BA': 7,
+  'noise': 0.2975399872388438,
+  'p_in': 0.8531053332715901,
+  'thr': 0.36048623164507654,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.7147200107574463).
+[INFO] [2022-10-24 07:18:40,334] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:40,581] [OpenBox-parallel_async] Update observation 19: Observation(config=Configuration(values={
+  'alpha': 0.3277185205489207,
+  'binary': 1,
+  'decay': 1.0331458662854192,
+  'gamma': 0.2611940398456398,
+  'k': 10,
+  'm_BA': 8,
+  'noise': 0.7768489392303554,
+  'p_in': 0.4123288631941625,
+  'thr': 1.7718337824064736,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8843405246734619).
+[INFO] [2022-10-24 07:18:40,648] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:41,301] [OpenBox-parallel_async] Update observation 20: Observation(config=Configuration(values={
+  'alpha': 0.03912173457480095,
+  'binary': 0,
+  'decay': 0.6845191092160996,
+  'gamma': 1.0541182305612662,
+  'k': 3,
+  'm_BA': 4,
+  'noise': 0.9030092118576812,
+  'p_in': 0.7658890642768397,
+  'thr': 1.741240713060435,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.545382261276245).
+[INFO] [2022-10-24 07:18:41,577] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:42,320] [OpenBox-parallel_async] Update observation 21: Observation(config=Configuration(values={
+  'alpha': 0.802934987414551,
+  'binary': 0,
+  'decay': 0.9936192493310172,
+  'gamma': 0.9463468669083865,
+  'k': 2,
+  'm_BA': 4,
+  'noise': 0.6311762928278982,
+  'p_in': 0.9842258693122313,
+  'thr': 1.324656955093994,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.9811017513275146).
+[INFO] [2022-10-24 07:18:42,516] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:42,672] [OpenBox-parallel_async] Update observation 22: Observation(config=Configuration(values={
+  'alpha': 0.7400515421070897,
+  'binary': 1,
+  'decay': 1.0111605598177067,
+  'gamma': 1.8207380767275594,
+  'k': 2,
+  'm_BA': 9,
+  'noise': 0.4009048919993621,
+  'p_in': 0.06927416583216794,
+  'thr': 0.03129281766565817,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=3.287843942642212).
+[INFO] [2022-10-24 07:18:42,835] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:46,380] [OpenBox-parallel_async] Update observation 23: Observation(config=Configuration(values={
+  'alpha': 0.7702746302517743,
+  'binary': 1,
+  'decay': 1.6034678508998688,
+  'gamma': 0.7524099409710736,
+  'k': 4,
+  'm_BA': 10,
+  'noise': 0.009173479296499365,
+  'p_in': 0.9430572299887519,
+  'thr': 1.1501712864877223,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=5.7272491455078125).
+[INFO] [2022-10-24 07:18:46,590] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:47,649] [OpenBox-parallel_async] Update observation 24: Observation(config=Configuration(values={
+  'alpha': 0.3276807141128507,
+  'binary': 0,
+  'decay': 1.438849521428717,
+  'gamma': 0.948795152131187,
+  'k': 5,
+  'm_BA': 6,
+  'noise': 0.13619564844605248,
+  'p_in': 0.2550366420309558,
+  'thr': 0.0762535819556085,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=6.067091703414917).
+[INFO] [2022-10-24 07:18:47,904] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:48,715] [OpenBox-parallel_async] Update observation 25: Observation(config=Configuration(values={
+  'alpha': 0.3574858092136771,
+  'binary': 0,
+  'decay': 1.6871475209339433,
+  'gamma': 0.14921864429487375,
+  'k': 5,
+  'm_BA': 4,
+  'noise': 0.7899078872394802,
+  'p_in': 0.6614617656471615,
+  'thr': 0.42021065093172183,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=5.871610879898071).
+[INFO] [2022-10-24 07:18:48,859] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:50,247] [OpenBox-parallel_async] Update observation 26: Observation(config=Configuration(values={
+  'alpha': 0.349832906890272,
+  'binary': 1,
+  'decay': 1.0086769229745438,
+  'gamma': 1.464039031320464,
+  'k': 4,
+  'm_BA': 3,
+  'noise': 0.948590072434257,
+  'p_in': 0.10845433542077076,
+  'thr': 0.11273069451213646,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.3782546520233154).
+[INFO] [2022-10-24 07:18:50,428] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:51,952] [OpenBox-parallel_async] Update observation 27: Observation(config=Configuration(values={
+  'alpha': 0.6329817756388955,
+  'binary': 1,
+  'decay': 1.5172845997180693,
+  'gamma': 0.7073480435055011,
+  'k': 4,
+  'm_BA': 7,
+  'noise': 0.7072668912779236,
+  'p_in': 0.3168079842733995,
+  'thr': 0.7278624345121405,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.5116090774536133).
+[INFO] [2022-10-24 07:18:52,019] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:54,140] [OpenBox-parallel_async] Update observation 28: Observation(config=Configuration(values={
+  'alpha': 0.29029369758038237,
+  'binary': 0,
+  'decay': 1.5686481193322364,
+  'gamma': 1.7428096547456169,
+  'k': 3,
+  'm_BA': 1,
+  'noise': 0.639209056971169,
+  'p_in': 0.2847141681809794,
+  'thr': 0.44834028695736206,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=6.225121021270752).
+[INFO] [2022-10-24 07:18:54,206] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:54,718] [OpenBox-parallel_async] Update observation 29: Observation(config=Configuration(values={
+  'alpha': 0.2716199671517572,
+  'binary': 0,
+  'decay': 0.5364490202440713,
+  'gamma': 1.9485434558526786,
+  'k': 2,
+  'm_BA': 1,
+  'noise': 0.30890896912552934,
+  'p_in': 0.6726822491532173,
+  'thr': 0.599504489170879,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.6932692527770996).
+[INFO] [2022-10-24 07:18:54,838] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:55,063] [OpenBox-parallel_async] Update observation 30: Observation(config=Configuration(values={
+  'alpha': 0.3512978522662591,
+  'binary': 0,
+  'decay': 1.7650073191458118,
+  'gamma': 0.895795157695088,
+  'k': 6,
+  'm_BA': 1,
+  'noise': 0.8316872065094283,
+  'p_in': 0.37658808023706025,
+  'thr': 0.32992889328719,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=12.539711713790894).
+[INFO] [2022-10-24 07:18:55,144] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:55,471] [OpenBox-parallel_async] Update observation 31: Observation(config=Configuration(values={
+  'alpha': 0.5392765546106109,
+  'binary': 1,
+  'decay': 1.7389392987582888,
+  'gamma': 0.5040531414211542,
+  'k': 5,
+  'm_BA': 5,
+  'noise': 0.8779033377767539,
+  'p_in': 0.5775729512536356,
+  'thr': 1.8125965461204985,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.2586190700531006).
+[INFO] [2022-10-24 07:18:55,765] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:18:56,253] [OpenBox-parallel_async] Update observation 32: Observation(config=Configuration(values={
+  'alpha': 0.4240272115431081,
+  'binary': 1,
+  'decay': 1.617108517017148,
+  'gamma': 1.606220235635227,
+  'k': 9,
+  'm_BA': 9,
+  'noise': 0.6605420039881924,
+  'p_in': 0.4908898510728039,
+  'thr': 0.21631657756057066,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.1044960021972656).
+[INFO] [2022-10-24 07:18:56,380] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:01,948] [OpenBox-parallel_async] Update observation 33: Observation(config=Configuration(values={
+  'alpha': 0.7146166997083692,
+  'binary': 0,
+  'decay': 0.2128156559998653,
+  'gamma': 1.7976569467337848,
+  'k': 4,
+  'm_BA': 9,
+  'noise': 0.4053847296954577,
+  'p_in': 0.3591730565048302,
+  'thr': 1.2184160527822663,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=7.102358818054199).
+[INFO] [2022-10-24 07:19:02,060] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:02,525] [OpenBox-parallel_async] Update observation 34: Observation(config=Configuration(values={
+  'alpha': 0.4585095590572523,
+  'binary': 0,
+  'decay': 0.11394772821516974,
+  'gamma': 1.4979576635004874,
+  'k': 9,
+  'm_BA': 10,
+  'noise': 0.9113045633458229,
+  'p_in': 0.11203235858141836,
+  'thr': 1.970259689082081,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=6.142701148986816).
+[INFO] [2022-10-24 07:19:02,695] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:03,311] [OpenBox-parallel_async] Update observation 35: Observation(config=Configuration(values={
+  'alpha': 0.5680627476575076,
+  'binary': 1,
+  'decay': 1.1936616884604663,
+  'gamma': 0.9624039623105858,
+  'k': 6,
+  'm_BA': 4,
+  'noise': 0.0905183904224034,
+  'p_in': 0.6713297336285213,
+  'thr': 1.0399181966018065,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=7.542176008224487).
+[INFO] [2022-10-24 07:19:03,316] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:04,441] [OpenBox-parallel_async] Update observation 36: Observation(config=Configuration(values={
+  'alpha': 0.8341038892141729,
+  'binary': 0,
+  'decay': 0.8679799416428702,
+  'gamma': 0.1366229441715623,
+  'k': 4,
+  'm_BA': 3,
+  'noise': 0.24919121077527995,
+  'p_in': 0.6882751049596775,
+  'thr': 0.4422129470512659,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.3713924884796143).
+[INFO] [2022-10-24 07:19:04,559] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:04,882] [OpenBox-parallel_async] Update observation 37: Observation(config=Configuration(values={
+  'alpha': 0.9184435830932982,
+  'binary': 0,
+  'decay': 1.7257759821663832,
+  'gamma': 0.6768128383961427,
+  'k': 8,
+  'm_BA': 5,
+  'noise': 0.16386640580500222,
+  'p_in': 0.19281808632806952,
+  'thr': 1.3586972306660883,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=2.1809237003326416).
+[INFO] [2022-10-24 07:19:05,174] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:05,183] [OpenBox-parallel_async] Update observation 38: Observation(config=Configuration(values={
+  'alpha': 0.32041472868232745,
+  'binary': 1,
+  'decay': 1.2839749097678717,
+  'gamma': 1.8140652549048892,
+  'k': 5,
+  'm_BA': 9,
+  'noise': 0.33882777092407323,
+  'p_in': 0.6662309794539726,
+  'thr': 0.8889045028525053,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.8628344535827637).
+[INFO] [2022-10-24 07:19:05,413] [OpenBox-parallel_async] Update observation 39: Observation(config=Configuration(values={
+  'alpha': 0.6874017822699441,
+  'binary': 1,
+  'decay': 1.5771348730958852,
+  'gamma': 0.5787409288683809,
+  'k': 7,
+  'm_BA': 1,
+  'noise': 0.8427543339613666,
+  'p_in': 0.6520668833150954,
+  'thr': 1.1074995249162531,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8506314754486084).
+[INFO] [2022-10-24 07:19:05,490] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:05,493] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:06,214] [OpenBox-parallel_async] Update observation 40: Observation(config=Configuration(values={
+  'alpha': 0.24214920021547304,
+  'binary': 1,
+  'decay': 0.7205774447808453,
+  'gamma': 1.8306569921059486,
+  'k': 9,
+  'm_BA': 1,
+  'noise': 0.5611049756207986,
+  'p_in': 0.7653894996527923,
+  'thr': 0.0031764518745411863,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.7210147380828857).
+[INFO] [2022-10-24 07:19:06,224] [OpenBox-parallel_async] Update observation 41: Observation(config=Configuration(values={
+  'alpha': 0.04512521884778076,
+  'binary': 1,
+  'decay': 0.9228801704972924,
+  'gamma': 1.7190018050575098,
+  'k': 7,
+  'm_BA': 5,
+  'noise': 0.5369045933645529,
+  'p_in': 0.8549996207366921,
+  'thr': 0.6616386163073436,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.7290143966674805).
+[INFO] [2022-10-24 07:19:06,421] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:06,423] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:06,579] [OpenBox-parallel_async] Update observation 42: Observation(config=Configuration(values={
+  'alpha': 0.1926308767872159,
+  'binary': 1,
+  'decay': 1.48593128678076,
+  'gamma': 1.891820213808861,
+  'k': 6,
+  'm_BA': 9,
+  'noise': 0.37268153804700355,
+  'p_in': 0.7193370731699551,
+  'thr': 1.0917209638875733,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.3990602493286133).
+[INFO] [2022-10-24 07:19:06,735] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:07,310] [OpenBox-parallel_async] Update observation 43: Observation(config=Configuration(values={
+  'alpha': 0.4782093459712027,
+  'binary': 1,
+  'decay': 1.2313963498961062,
+  'gamma': 0.46355570045739936,
+  'k': 5,
+  'm_BA': 5,
+  'noise': 0.5248480592075966,
+  'p_in': 0.8305039453213533,
+  'thr': 1.0998301790527991,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8841955661773682).
+[INFO] [2022-10-24 07:19:07,362] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:08,088] [OpenBox-parallel_async] Update observation 44: Observation(config=Configuration(values={
+  'alpha': 0.49118950094743485,
+  'binary': 1,
+  'decay': 0.12429901710338465,
+  'gamma': 1.5708597560084456,
+  'k': 9,
+  'm_BA': 7,
+  'noise': 0.22730092248940048,
+  'p_in': 0.04177622915422974,
+  'thr': 1.7652719139341668,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.660524606704712).
+[INFO] [2022-10-24 07:19:08,201] [OpenBox-parallel_async] Update observation 45: Observation(config=Configuration(values={
+  'alpha': 0.9266279984665298,
+  'binary': 1,
+  'decay': 0.02705835421113889,
+  'gamma': 1.081367822621217,
+  'k': 4,
+  'm_BA': 10,
+  'noise': 0.9574879525996667,
+  'p_in': 0.5101298009501672,
+  'thr': 1.494873012229239,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8348445892333984).
+[INFO] [2022-10-24 07:19:08,304] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:08,306] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:08,392] [OpenBox-parallel_async] Update observation 46: Observation(config=Configuration(values={
+  'alpha': 0.28205778853511576,
+  'binary': 0,
+  'decay': 0.5675856672963031,
+  'gamma': 0.3676312189214601,
+  'k': 4,
+  'm_BA': 3,
+  'noise': 0.504665787653819,
+  'p_in': 0.689686006539189,
+  'thr': 0.9255948544700847,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.0839991569519043).
+[INFO] [2022-10-24 07:19:08,433] [OpenBox-parallel_async] Update observation 47: Observation(config=Configuration(values={
+  'alpha': 0.033341887811418336,
+  'binary': 0,
+  'decay': 0.2110917807569277,
+  'gamma': 1.6969028191609272,
+  'k': 8,
+  'm_BA': 2,
+  'noise': 0.023476673890818978,
+  'p_in': 0.7512869426440648,
+  'thr': 1.0811559329955798,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.6950170993804932).
+[INFO] [2022-10-24 07:19:08,616] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:08,617] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:08,656] [OpenBox-parallel_async] Update observation 48: Observation(config=Configuration(values={
+  'alpha': 0.5211182998103933,
+  'binary': 0,
+  'decay': 0.005932621864032761,
+  'gamma': 0.023014307201033812,
+  'k': 4,
+  'm_BA': 4,
+  'noise': 0.6006733991756712,
+  'p_in': 0.5363050370789827,
+  'thr': 1.3093458554456958,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03499865531921387).
+[INFO] [2022-10-24 07:19:08,927] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:09,454] [OpenBox-parallel_async] Update observation 49: Observation(config=Configuration(values={
+  'alpha': 0.12500700508325058,
+  'binary': 1,
+  'decay': 1.9894047286428986,
+  'gamma': 1.411307516785941,
+  'k': 3,
+  'm_BA': 4,
+  'noise': 0.6462819675236436,
+  'p_in': 0.32895286253530354,
+  'thr': 1.4265065371611028,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8345997333526611).
+[INFO] [2022-10-24 07:19:09,553] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:09,592] [OpenBox-parallel_async] Update observation 50: Observation(config=Configuration(values={
+  'alpha': 0.4952216979710491,
+  'binary': 1,
+  'decay': 0.8708678511565264,
+  'gamma': 1.9077110617243216,
+  'k': 10,
+  'm_BA': 9,
+  'noise': 0.5602468408803836,
+  'p_in': 0.41766999176569275,
+  'thr': 1.3181155083301408,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03600287437438965).
+[INFO] [2022-10-24 07:19:09,749] [OpenBox-parallel_async] Update observation 51: Observation(config=Configuration(values={
+  'alpha': 0.48361958264227056,
+  'binary': 1,
+  'decay': 0.6793768970110798,
+  'gamma': 0.09365926039169681,
+  'k': 9,
+  'm_BA': 4,
+  'noise': 0.7565860281680398,
+  'p_in': 0.43406921799475995,
+  'thr': 1.7415132803627342,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8190770149230957).
+[INFO] [2022-10-24 07:19:09,854] [OpenBox-parallel_async] Update observation 52: Observation(config=Configuration(values={
+  'alpha': 0.5187560215044915,
+  'binary': 0,
+  'decay': 0.5231934332016983,
+  'gamma': 1.4845594233843598,
+  'k': 5,
+  'm_BA': 4,
+  'noise': 0.8927123021669244,
+  'p_in': 0.45065889790752145,
+  'thr': 1.0240841880977398,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.5439400672912598).
+[INFO] [2022-10-24 07:19:09,863] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 1.
+[INFO] [2022-10-24 07:19:09,864] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:09,865] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:09,901] [OpenBox-parallel_async] Update observation 53: Observation(config=Configuration(values={
+  'alpha': 0.5180429232964879,
+  'binary': 0,
+  'decay': 1.5916821816071842,
+  'gamma': 1.6222210422660426,
+  'k': 6,
+  'm_BA': 7,
+  'noise': 0.1120366150983122,
+  'p_in': 0.1483935281690152,
+  'thr': 1.035297781983014,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03300118446350098).
+[INFO] [2022-10-24 07:19:10,176] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:11,392] [OpenBox-parallel_async] Update observation 54: Observation(config=Configuration(values={
+  'alpha': 0.11771119189689383,
+  'binary': 0,
+  'decay': 1.47520166891087,
+  'gamma': 0.37475508001887015,
+  'k': 10,
+  'm_BA': 1,
+  'noise': 0.9179371085960141,
+  'p_in': 0.016391722856400892,
+  'thr': 1.7120343618112803,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.5241072177886963).
+[INFO] [2022-10-24 07:19:11,430] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:11,467] [OpenBox-parallel_async] Update observation 55: Observation(config=Configuration(values={
+  'alpha': 0.7751621486644842,
+  'binary': 1,
+  'decay': 1.5027943877041423,
+  'gamma': 1.3225627601307164,
+  'k': 4,
+  'm_BA': 6,
+  'noise': 0.9676282232248149,
+  'p_in': 0.12873065328039668,
+  'thr': 1.9355577731369962,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03399920463562012).
+[INFO] [2022-10-24 07:19:11,476] [OpenBox-parallel_async] Update observation 56: Observation(config=Configuration(values={
+  'alpha': 0.11670502017749085,
+  'binary': 0,
+  'decay': 0.4044480808852595,
+  'gamma': 0.4772634546061343,
+  'k': 8,
+  'm_BA': 9,
+  'noise': 0.15553632971463005,
+  'p_in': 0.6555590438153752,
+  'thr': 1.2447812551275617,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.6071064472198486).
+[INFO] [2022-10-24 07:19:11,744] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:11,745] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:11,781] [OpenBox-parallel_async] Update observation 57: Observation(config=Configuration(values={
+  'alpha': 0.32739518662900013,
+  'binary': 0,
+  'decay': 0.7122157781665028,
+  'gamma': 1.728952911354714,
+  'k': 5,
+  'm_BA': 7,
+  'noise': 0.8031752890887011,
+  'p_in': 0.31156536942999635,
+  'thr': 0.030494391186416392,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.034000396728515625).
+[INFO] [2022-10-24 07:19:11,834] [OpenBox-parallel_async] Update observation 58: Observation(config=Configuration(values={
+  'alpha': 0.8561283511661827,
+  'binary': 0,
+  'decay': 1.0645071490100044,
+  'gamma': 1.8091777807124163,
+  'k': 6,
+  'm_BA': 8,
+  'noise': 0.7531941781402789,
+  'p_in': 0.3128168390693138,
+  'thr': 1.7653735763734029,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.6538424491882324).
+[INFO] [2022-10-24 07:19:12,057] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:12,059] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:12,101] [OpenBox-parallel_async] Update observation 59: Observation(config=Configuration(values={
+  'alpha': 0.017330902600068865,
+  'binary': 1,
+  'decay': 1.3507068902456036,
+  'gamma': 0.025036315296152134,
+  'k': 6,
+  'm_BA': 10,
+  'noise': 0.15728525165192309,
+  'p_in': 0.9987290053684044,
+  'thr': 0.6134616267063944,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03800177574157715).
+[INFO] [2022-10-24 07:19:12,374] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:13,468] [OpenBox-parallel_async] Update observation 60: Observation(config=Configuration(values={
+  'alpha': 0.3456618443416031,
+  'binary': 1,
+  'decay': 0.20748757428217113,
+  'gamma': 0.17469525423102206,
+  'k': 7,
+  'm_BA': 2,
+  'noise': 0.42920626300650067,
+  'p_in': 0.9109325986670567,
+  'thr': 1.9609303023666975,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.7207937240600586).
+[INFO] [2022-10-24 07:19:13,626] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:13,664] [OpenBox-parallel_async] Update observation 61: Observation(config=Configuration(values={
+  'alpha': 0.866401441043243,
+  'binary': 1,
+  'decay': 0.31795516145430724,
+  'gamma': 1.4621414031319284,
+  'k': 6,
+  'm_BA': 6,
+  'noise': 0.3399920309810618,
+  'p_in': 0.20825736207046774,
+  'thr': 0.8515025952441799,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03399991989135742).
+[INFO] [2022-10-24 07:19:13,807] [OpenBox-parallel_async] Update observation 62: Observation(config=Configuration(values={
+  'alpha': 0.5480533453535034,
+  'binary': 0,
+  'decay': 0.9922624381314142,
+  'gamma': 1.1232560660744262,
+  'k': 5,
+  'm_BA': 8,
+  'noise': 0.40778578673006116,
+  'p_in': 0.36847789761246175,
+  'thr': 0.44241394177904514,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.7430081367492676).
+[INFO] [2022-10-24 07:19:13,942] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:13,943] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:13,982] [OpenBox-parallel_async] Update observation 63: Observation(config=Configuration(values={
+  'alpha': 0.003688767074282673,
+  'binary': 0,
+  'decay': 0.19670528482520822,
+  'gamma': 0.8562047099425776,
+  'k': 7,
+  'm_BA': 4,
+  'noise': 0.28015394873090094,
+  'p_in': 0.577070427865941,
+  'thr': 1.9262759467266484,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03500008583068848).
+[INFO] [2022-10-24 07:19:14,041] [OpenBox-parallel_async] Update observation 64: Observation(config=Configuration(values={
+  'alpha': 0.08327354346764249,
+  'binary': 0,
+  'decay': 0.7352498855261176,
+  'gamma': 1.0395178573581763,
+  'k': 3,
+  'm_BA': 2,
+  'noise': 0.5795190278772918,
+  'p_in': 0.7176155583876753,
+  'thr': 0.7093367477626711,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.663008689880371).
+[INFO] [2022-10-24 07:19:14,258] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:14,259] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:14,300] [OpenBox-parallel_async] Update observation 65: Observation(config=Configuration(values={
+  'alpha': 0.6904834205347116,
+  'binary': 0,
+  'decay': 0.7048141732409035,
+  'gamma': 1.5348127574413506,
+  'k': 7,
+  'm_BA': 3,
+  'noise': 0.19536718847353607,
+  'p_in': 0.5239291792170124,
+  'thr': 1.506052053586242,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.037000417709350586).
+[INFO] [2022-10-24 07:19:14,573] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:15,087] [OpenBox-parallel_async] Update observation 66: Observation(config=Configuration(values={
+  'alpha': 0.5508135030792201,
+  'binary': 1,
+  'decay': 1.9875770478712438,
+  'gamma': 0.6564956030853408,
+  'k': 4,
+  'm_BA': 4,
+  'noise': 0.5972299980106532,
+  'p_in': 0.01776877598281279,
+  'thr': 0.03218731496221916,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.8259997367858887).
+[INFO] [2022-10-24 07:19:15,203] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:15,240] [OpenBox-parallel_async] Update observation 67: Observation(config=Configuration(values={
+  'alpha': 0.21557218313055637,
+  'binary': 0,
+  'decay': 1.8068364740109641,
+  'gamma': 1.6914973655347916,
+  'k': 9,
+  'm_BA': 9,
+  'noise': 0.9632094738204541,
+  'p_in': 0.30118452079637137,
+  'thr': 1.1594609052557752,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.032999515533447266).
+[INFO] [2022-10-24 07:19:15,518] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:15,657] [OpenBox-parallel_async] Update observation 68: Observation(config=Configuration(values={
+  'alpha': 0.7887609488279612,
+  'binary': 0,
+  'decay': 0.17796119319321613,
+  'gamma': 0.10589709720527374,
+  'k': 6,
+  'm_BA': 3,
+  'noise': 0.401662120729957,
+  'p_in': 0.30812211517041654,
+  'thr': 1.116690248621206,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.709977388381958).
+[INFO] [2022-10-24 07:19:15,819] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:15,858] [OpenBox-parallel_async] Update observation 69: Observation(config=Configuration(values={
+  'alpha': 0.5930380433036547,
+  'binary': 1,
+  'decay': 0.4318017335069053,
+  'gamma': 0.8770184415563755,
+  'k': 2,
+  'm_BA': 6,
+  'noise': 0.45994600323893164,
+  'p_in': 0.1438950834689654,
+  'thr': 1.3770806570292249,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.035001277923583984).
+[INFO] [2022-10-24 07:19:16,134] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:16,429] [OpenBox-parallel_async] Update observation 70: Observation(config=Configuration(values={
+  'alpha': 0.27560995956751266,
+  'binary': 0,
+  'decay': 0.35845450303982873,
+  'gamma': 1.7265741043127405,
+  'k': 6,
+  'm_BA': 8,
+  'noise': 0.3894331436405093,
+  'p_in': 0.4841543824399256,
+  'thr': 1.7623890185957727,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.8523190021514893).
+[INFO] [2022-10-24 07:19:16,449] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:16,490] [OpenBox-parallel_async] Update observation 71: Observation(config=Configuration(values={
+  'alpha': 0.012664072662232684,
+  'binary': 0,
+  'decay': 0.2844966286357391,
+  'gamma': 0.540453039359263,
+  'k': 3,
+  'm_BA': 2,
+  'noise': 0.8610630763922679,
+  'p_in': 0.23586815333908318,
+  'thr': 0.26564794405695324,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.036000728607177734).
+[INFO] [2022-10-24 07:19:16,763] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:17,347] [OpenBox-parallel_async] Update observation 72: Observation(config=Configuration(values={
+  'alpha': 0.05413909854371435,
+  'binary': 0,
+  'decay': 1.4451212799204014,
+  'gamma': 1.9887735972987064,
+  'k': 4,
+  'm_BA': 9,
+  'noise': 0.6537374584894373,
+  'p_in': 0.7234651542561957,
+  'thr': 1.5975673939284438,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.8245701789855957).
+[INFO] [2022-10-24 07:19:17,395] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:17,435] [OpenBox-parallel_async] Update observation 73: Observation(config=Configuration(values={
+  'alpha': 0.8909155727442457,
+  'binary': 1,
+  'decay': 0.4846424447936477,
+  'gamma': 0.8782273454326839,
+  'k': 3,
+  'm_BA': 2,
+  'noise': 0.449102135176096,
+  'p_in': 0.6474473995480208,
+  'thr': 0.15623467655875567,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03599834442138672).
+[INFO] [2022-10-24 07:19:17,711] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:17,876] [OpenBox-parallel_async] Update observation 74: Observation(config=Configuration(values={
+  'alpha': 0.4494718915617064,
+  'binary': 0,
+  'decay': 1.0627064758427023,
+  'gamma': 1.9516328987966403,
+  'k': 2,
+  'm_BA': 1,
+  'noise': 0.8806869157066473,
+  'p_in': 0.6190935571643277,
+  'thr': 0.8222394950442369,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.7377073764801025).
+[INFO] [2022-10-24 07:19:18,026] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:18,065] [OpenBox-parallel_async] Update observation 75: Observation(config=Configuration(values={
+  'alpha': 0.46138042127553003,
+  'binary': 1,
+  'decay': 0.34980407225640775,
+  'gamma': 0.9245949352268827,
+  'k': 7,
+  'm_BA': 2,
+  'noise': 0.38553590616897415,
+  'p_in': 0.4348512861885283,
+  'thr': 1.018743214066665,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03400015830993652).
+[INFO] [2022-10-24 07:19:18,342] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:18,442] [OpenBox-parallel_async] Update observation 76: Observation(config=Configuration(values={
+  'alpha': 0.3206889676576842,
+  'binary': 0,
+  'decay': 0.16729938624967078,
+  'gamma': 1.422158302481695,
+  'k': 9,
+  'm_BA': 5,
+  'noise': 0.5692644671473619,
+  'p_in': 0.18310458070697333,
+  'thr': 0.9963082971490309,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.6742658615112305).
+[INFO] [2022-10-24 07:19:18,643] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:18,683] [OpenBox-parallel_async] Update observation 77: Observation(config=Configuration(values={
+  'alpha': 0.8888907903906063,
+  'binary': 1,
+  'decay': 0.32512438824741596,
+  'gamma': 1.8713114387853726,
+  'k': 9,
+  'm_BA': 1,
+  'noise': 0.1464141268872936,
+  'p_in': 0.30374979053043927,
+  'thr': 0.8769563355551726,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.034996986389160156).
+[INFO] [2022-10-24 07:19:18,956] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:19,140] [OpenBox-parallel_async] Update observation 78: Observation(config=Configuration(values={
+  'alpha': 0.30974520905304825,
+  'binary': 1,
+  'decay': 0.5880791978836155,
+  'gamma': 1.2326103217196969,
+  'k': 10,
+  'm_BA': 6,
+  'noise': 0.5871403161559865,
+  'p_in': 0.35573034791725455,
+  'thr': 0.835228307742383,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.7953662872314453).
+[INFO] [2022-10-24 07:19:19,229] [OpenBox-parallel_async] Update observation 79: Observation(config=Configuration(values={
+  'alpha': 0.8687339354746025,
+  'binary': 0,
+  'decay': 1.418942636025156,
+  'gamma': 0.8572409209267458,
+  'k': 4,
+  'm_BA': 2,
+  'noise': 0.6855297686447517,
+  'p_in': 0.032429726132409686,
+  'thr': 0.5038859023108448,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.5137298107147217).
+[INFO] [2022-10-24 07:19:19,272] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 2.
+[INFO] [2022-10-24 07:19:19,274] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:19,314] [OpenBox-parallel_async] Update observation 80: Observation(config=Configuration(values={
+  'alpha': 0.9746213351569583,
+  'binary': 0,
+  'decay': 1.5260618696412982,
+  'gamma': 1.4059392423475705,
+  'k': 4,
+  'm_BA': 5,
+  'noise': 0.8968543237412102,
+  'p_in': 0.08957304728037496,
+  'thr': 1.9652833013174829,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03751397132873535).
+[INFO] [2022-10-24 07:19:19,581] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:20,626] [OpenBox-parallel_async] Update observation 81: Observation(config=Configuration(values={
+  'alpha': 0.21027497545944573,
+  'binary': 0,
+  'decay': 1.0999340662230468,
+  'gamma': 1.4466971474303865,
+  'k': 6,
+  'm_BA': 9,
+  'noise': 0.37811909365702634,
+  'p_in': 0.4686764655663661,
+  'thr': 1.7045872971409477,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=1.6659603118896484).
+[INFO] [2022-10-24 07:19:20,835] [AsyncBatchAdvisor] #Call get_suggestion. len of running configs = 3.
+[INFO] [2022-10-24 07:19:20,874] [OpenBox-parallel_async] Update observation 82: Observation(config=Configuration(values={
+  'alpha': 0.7619986689928513,
+  'binary': 1,
+  'decay': 0.3871963914987424,
+  'gamma': 0.5966380459813285,
+  'k': 5,
+  'm_BA': 5,
+  'noise': 0.2757936846652864,
+  'p_in': 0.037066537774402164,
+  'thr': 1.875069861942304,
+})
+, objs=[2147483647], trial_state=1, elapsed_time=0.03499960899353027).

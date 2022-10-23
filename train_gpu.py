@@ -152,9 +152,32 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     #                                      train_label, 
     #                                      test_label)
     print(tr_score, te_score)
-    return -te_score # openbox 默认最小化loss
+    return -te_score.detach().cpu().item() # openbox 默认最小化loss
 
-def rollout(config:Config):
+def rollout(configuration):
+    from config import Config
+    config = Config
+    
+    config.alpha = configuration['alpha']
+    config.p_in = configuration['p_in']
+    config.gamma = configuration['gamma']
+    config.binary = configuration['binary']
+    config.noise_str = configuration['noise']
+    config.m_BA = configuration['m_BA']
+    config.k = configuration['k']
+    config.LIF_decay = configuration['decay']
+    config.LIF_thr = configuration['thr']
+    
+    model = torchRC(config)
+
+    # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
+    # loss = learn(model, train_loader, test_loader, config)
+    
+    train_data, train_label, test_data, test_label = part_MNIST(train_num=config.train_num, test_num=config.test_num)
+    loss = learn(model, (train_data, train_label), (test_data, test_label), config)
+    return {'objs': (loss,)}
+
+def rollouts(config:Config):
     model = torchRC(config)
 
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
@@ -168,13 +191,16 @@ def rollout(config:Config):
 def param_search(run_time):
     # Define Search Space
     space = sp.Space()
-    x1 = sp.Real(name="alpha", lower=0, upper=1, default_value=0.5)
-    x2 = sp.Real(name="decay", lower=0, upper=2, default_value=0.5)
-    x3 = sp.Real(name="thr", lower=0, upper=2, default_value=0.7) 
-    x4 = sp.Real(name="R", lower=0.05, upper=0.5, default_value=0.3) 
-    x5 = sp.Real(name="p", lower=0, upper=1, default_value=0.5) 
-    x6 = sp.Real(name="gamma", lower=0, upper=2, default_value=1.0) 
-    space.add_variables([x1, x2, x3, x4, x5, x6])
+    x1 = sp.Real(name="alpha", lower=0, upper=1, default_value=0.2)
+    x2 = sp.Real(name="p_in", lower=0, upper=1, default_value=0.2) 
+    x3 = sp.Real(name="gamma", lower=0, upper=2, default_value=1.0) 
+    x4 = sp.Categorical(name='binary', choices=[0, 1], default_value=0)
+    x5 = sp.Real(name='noise', lower=0, upper=1, default_value=0.05)
+    x6 = sp.Int(name='m_BA', lower=1, upper=10, default_value=2)
+    x7 = sp.Int(name='k', lower=2, upper=10, default_value=3)
+    x8 = sp.Real(name="decay", lower=0, upper=2, default_value=0.5)
+    x9 = sp.Real(name="thr", lower=0, upper=2, default_value=0.7)  
+    space.add_variables([x1, x2, x3, x4, x5, x6, x7, x8, x9])
     
     # Parallel Evaluation on Local Machine 本机并行优化
     opt = ParallelOptimizer(rollout,
@@ -201,5 +227,5 @@ def param_search(run_time):
 if __name__ == '__main__':
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
     
-    # param_search(run_time)
-    inference()
+    param_search(run_time)
+    # inference()

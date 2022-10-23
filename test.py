@@ -17,6 +17,6 @@ if __name__ == '__main__':
     # inference(model, train_loader, frames=20)
     
     
-    rollout(Config)
+    rollouts(Config)
     print(time.time()-t)
 
