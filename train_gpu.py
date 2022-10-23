@@ -4,22 +4,28 @@ train the pytorch version Reservoir Computing model in GPUs
 
 import time
 import torch
+import random
 import pickle
 import numpy as np
 from RC import MLP, torchRC
 from config import Config
 from utils import encoding
-from data import MNIST_generation
+from data import MNIST_generation, part_MNIST
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
 
 def inference(model:torchRC,
+              config:Config,
               data_loader,
               ):
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
+    x, y = data_loader
+    batch = config.batch_size
+    iter = int(len(x) / batch)
+    
     device = model.device
     frames = model.frames
     device = model.device
@@ -28,9 +34,12 @@ def inference(model:torchRC,
     labels = []
     spikes = None
     
-    for i, (image, label) in enumerate(data_loader):
+    # for i, (image, label) in enumerate(data_loader):
+    for i in range(iter):
+        image = x[i*batch:(i+1)*batch]
+        label = y[i*batch:(i+1)*batch]
+    
         print('batch', i)
-        batch = image.shape[0]
         x_enc = None
         for _ in range(frames):
             spike = (image > torch.rand(image.size())).float()
@@ -58,8 +67,10 @@ def train_mlp_readout(model:MLP,
                       y_train,
                       y_test,
                       ):
-    iteration = int(60000/config.batch_size)
-    iter = int(10000/config.batch_size)
+    train_num = X_train.shape[0]
+    test_num = X_test.shape[0]
+    iteration = int(train_num/config.batch_size)
+    iter = int(test_num/config.batch_size)
     cost = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     for epoch in range(config.epoch) :
@@ -88,9 +99,9 @@ def train_mlp_readout(model:MLP,
             outputs = model(x)
             _, id = torch.max(outputs.data, 1)
             test_correct += torch.sum(id == y.data)
-        print('[%d,%d] loss:%.03f, train acc:%.4f, test acc:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/60000, test_correct/10000))
+        print('[%d,%d] loss:%.03f, train acc:%.4f, test acc:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/train_num, test_correct/test_num))
         
-    return train_correct / 60000, test_correct / 10000
+    return train_correct / train_num, test_correct / test_num
 
 
 def learn_readout(X_train, 
@@ -125,9 +136,8 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     # labels.shape (500,)
     N_hid = model.N_hid
     
-    train_rs, train_label = inference(model, train_loader,)
-    
-    test_rs, test_label = inference(model, test_loader,)
+    train_rs, train_label = inference(model, config, train_loader,)
+    test_rs, test_label = inference(model, config, test_loader,)
     
     mlp = MLP(2*N_hid, 128, 10).to(model.device)
     tr_score, te_score, = train_mlp_readout(model=mlp, 
@@ -144,11 +154,14 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     print(tr_score, te_score)
     return -te_score # openbox 默认最小化loss
 
-def rollout(config):
+def rollout(config:Config):
     model = torchRC(config)
 
-    train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
-    loss = learn(model, train_loader, test_loader, config)
+    # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
+    # loss = learn(model, train_loader, test_loader, config)
+    
+    train_data, train_label, test_data, test_label = part_MNIST(train_num=config.train_num, test_num=config.test_num)
+    loss = learn(model, (train_data, train_label), (test_data, test_label), config)
     return {'objs': (loss,)}
 
 

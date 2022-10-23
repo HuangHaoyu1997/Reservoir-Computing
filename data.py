@@ -5,6 +5,33 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
+def Rossler(a, b, c, dt, T):
+    '''
+    Implementation of chaotic Rossler system
+    x' = -y-z
+    y' = x+ay
+    z' = b+z(x-c)
+    a=0.5, b=2.0, c=4.0
+    '''
+    s = [[np.random.uniform(0,1) for _ in range(3)],]
+    T = np.arange(0, T, dt)
+    for t in T:
+        x = s[-1][0] + dt * (-s[-1][1] - s[-1][2])
+        y = s[-1][1] + dt * (s[-1][0] + a * s[-1][1])
+        z = s[-1][2] + dt * (b + s[-1][2] * (s[-1][0] - c))
+        s.append([x, y, z])
+    return np.array(s)
+
+def MackeyGlass(x0, tau, dt, T):
+    '''
+    implementation of Mackey-Glass System
+    
+    '''
+    y = []
+    T = np.arange(0, T, dt)
+    for t in T:
+        x = x0 + dt 
+
 def Lorenz63(train_num=1000):
     '''
     implementation for Lorenz 63
@@ -21,6 +48,26 @@ def Lorenz63(train_num=1000):
         
     return traj
 
+def part_MNIST(train_num=6000, test_num=1000):
+    train_dataset = torchvision.datasets.MNIST(root='./data/', 
+                                               train=True, 
+                                               download=False, 
+                                               transform=transforms.ToTensor())
+    test_dataset = torchvision.datasets.MNIST(root='./data/', 
+                                          train=False, 
+                                          download=False, 
+                                          transform=transforms.ToTensor())
+    
+    random_list = random.sample(list(range(len(train_dataset))), train_num)
+    train_data = train_dataset.train_data[random_list]
+    train_label = train_dataset.targets[random_list]
+    
+    random_list = random.sample(list(range(len(test_dataset))), test_num)
+    test_data = test_dataset.train_data[random_list]
+    test_label = test_dataset.targets[random_list]
+    
+    return train_data, train_label, test_data, test_label
+    
 def MNIST_generation(batch_size=1):
     '''
     生成随机编码的MNIST动态数据集
@@ -60,8 +107,8 @@ def MNIST_generation(batch_size=1):
 
 if __name__ == '__main__':
     # train_loader, test_loader = MNIST_generation()
-    train_data = Lorenz63(train_num=1000)
-    
+    # train_data = Lorenz63(train_num=1000)
+    train_data = Rossler(a=0.5, b=2.0, c=4.0, dt=0.01, T=10000)
     
     # plt.plot(train_data[:,0])
     # plt.plot(train_data[:,1])

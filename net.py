@@ -38,6 +38,10 @@ def Developmental_Time_Window(N, k, beta, R, r, p_self, omega):
     r:
     p_self:
     
+    
+    算法目前问题: 
+    早期节点(0,1,2,...)的引入非常耗时,后随着节点数量增加而逐渐加快
+    应该使初始节点数量增加至10个左右,给其随机分配
     '''
     
     A = np.zeros((N, N), dtype=np.float32) # adjacency matrix
@@ -53,9 +57,6 @@ def Developmental_Time_Window(N, k, beta, R, r, p_self, omega):
     i = 1
     t = 1 / N # timestep [0, 1]
     while i < N:
-        # self-connection
-        if np.random.rand() < p_self: A[i, i] = 1
-        
         # STEP1: random coordinates of new nodes
         U_theta = np.random.uniform(0,1)
         l = np.random.uniform(0, R)
@@ -76,7 +77,7 @@ def Developmental_Time_Window(N, k, beta, R, r, p_self, omega):
             dis_pioneer = np.sqrt(np.sum((pioneer_nodes - xyj)**2, 1))
             nearest_j = np.argmin(dis_pioneer) + 1
             P_time_V = TimeWindowFunction(t, nearest_j, k, omega)
-            
+            print(i, P_dist , P_time_U , P_time_V)
             if np.random.rand() < P_dist * P_time_U * P_time_V:
                 edge_sum += 1
                 A[i, j] = 1
@@ -84,6 +85,8 @@ def Developmental_Time_Window(N, k, beta, R, r, p_self, omega):
         
         # STEP4: if no edge to any existing nodes can be established, a new node will be resampled.
         if edge_sum > 0: 
+            # self-connection
+            if np.random.rand() < p_self: A[i, i] = 1
             t += 1/N
             i += 1 # add next node
             N_coordinates.append(xyi)
@@ -140,4 +143,12 @@ def RandomNetwork(N_hid, R):
     
     return A
 if __name__ == '__main__':
-    pass
+    
+    from config import Config
+    A = Developmental_Time_Window(Config.N_hid,
+                                Config.k,
+                                Config.beta,
+                                Config.R_,
+                                Config.r,
+                                Config.p_self,
+                                Config.omega,)

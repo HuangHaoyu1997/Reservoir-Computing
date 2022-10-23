@@ -53,7 +53,7 @@ def IzhikevichSimulation(v0, u0, dt, a, b, c, d, T, thr):
     T = np.arange(0, T, dt)
     for t in T:
         I = np.random.uniform(-1,1)
-        v, u, s = IzhikevichModel(v0, u0, dt, I, a, b, c, d, thr)
+        v, u, s = IzhikevichModel(v0, u0, dt, I, a, b, c, d, thr, spike)
         # if v>= thr:
         #     spikes.append(1)
         #     v = c
@@ -147,8 +147,8 @@ if __name__ == '__main__':
     
     
     
-    vs, us, spikes = IzhikevichSimulation(v0=-65,
-                                            u0=0.2*-65,
+    vs, us, spikes = IzhikevichSimulation(v0=0,
+                                            u0=0,
                                             dt=0.01,
                                             a=0.02,
                                             b=0.2,

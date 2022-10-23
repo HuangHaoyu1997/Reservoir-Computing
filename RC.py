@@ -32,7 +32,7 @@ class torchRC(nn.Module):
         self.frames = config.frames
         self.device = config.device
         
-        self.W_in, self.A, self.bias = self.reset(config)
+        self.W_ins, self.As, self.Bias = self.reset(config)
         
     def membrane(self, mem, x, spike):
         '''
@@ -57,46 +57,45 @@ class torchRC(nn.Module):
         x: input tensor [batch, frames, N_in]
         
         return
-        mems: [batch, frames, N_hid]
+        mems:        [batch, frames, N_hid]
         spike_train: [batch, frames, N_hid]
         '''
         batch = x.shape[0]
         
-        # for n in range(self.frames):
-        #     plt.imshow(spike.numpy()[0, n])
-        #     plt.show()
-        #     plt.pause(1)
-
-        spike_train = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
-        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        spikes = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
         mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        
+        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device) # initial spike at time=0
+        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device) # initial membrane potential at time=0
+        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
         for t in range(self.frames):
-            U = torch.mm(x[:,t,:], self.W_in) # (batch, N_hid)
-            r = torch.mm(spike, self.A) # information from neighbors (batch, N_hid)
-            y = self.alpha * r + (1-self.alpha) * (U + self.bias)
+            U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
+            r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
+            y = self.alpha * r + (1-self.alpha) * (U + self.Bias[0])
             y = act(y) # activation function
             mem, spike = self.membrane(mem, y, spike)
             mems[:,t,:] = mem
-            spike_train[:,t,:] = spike
+            spikes[:,t,:] = spike
         
         
-        spike_train = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
-        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        for t in range(self.frames):
-            U = torch.mm(x[:,t,:], self.W_in) # (batch, N_hid)
-            r = torch.mm(spike, self.A) # information from neighbors (batch, N_hid)
-            y = self.alpha * r + (1-self.alpha) * (U + self.bias)
-            y = act(y) # activation function
-            mem, spike = self.membrane(mem, y, spike)
-            mems[:,t,:] = mem
-            spike_train[:,t,:] = spike
+        # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # mems2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        # mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
+        # # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
+        # for t in range(self.frames):
+        #     U = torch.mm(spikes[:,t,:], self.W_ins[1]) # (batch, N_hid)
+        #     r = torch.mm(spike, self.As[1]) # information from neighbors (batch, N_hid)
+        #     y = self.alpha * r + (1-self.alpha) * (U + self.Bias[1])
+        #     y = act(y) # activation function
+        #     mem, spike = self.membrane(mem, y, spike)
+        #     mems2[:,t,:] = mem
+        #     spikes2[:,t,:] = spike
             
-        return mems, spike_train
+        return mems, spikes
+        # return mems2, spikes2
     
     def reset(self, config:Config):
         '''
@@ -108,6 +107,7 @@ class torchRC(nn.Module):
         mem:       membrane potential of reservoir neurons
         
         '''
+        assert len(config.type) == config.layer
         W_ins, As, Bias = [], [], []
         for i in range(config.layer):
             if i == 0: # first layer, input dim -> hidden dim
@@ -118,7 +118,7 @@ class torchRC(nn.Module):
                                                     config.p_in,
                                                     config.gamma,
                                                     config.binary,
-                                                    config.type,
+                                                    config.type[i],
                                                     config.noise,
                                                     config.noise_str,
                                                     config,
