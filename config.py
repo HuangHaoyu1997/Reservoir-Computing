@@ -2,6 +2,7 @@ from scipy.special import beta
 
 
 class Config:
+    verbose = False
     N_in = 28*28      # input dim
     N_hid = 500       # hidden dim / number of reservoir neuron
     N_out = 10        # output dim
@@ -11,7 +12,7 @@ class Config:
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
     frames = 30       # static img to event-based frames
-    device = 'cuda'   # 'cpu', 'cuda'
+    device = 'cpu'   # 'cpu', 'cuda'
     batch_size = 1000 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
     

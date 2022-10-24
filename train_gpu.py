@@ -39,7 +39,7 @@ def inference(model:torchRC,
         image = x[i*batch:(i+1)*batch]
         label = y[i*batch:(i+1)*batch]
     
-        print('batch', i)
+        # print('batch', i)
         x_enc = None
         for _ in range(frames):
             spike = (image > torch.rand(image.size())).float()
@@ -99,7 +99,8 @@ def train_mlp_readout(model:MLP,
             outputs = model(x)
             _, id = torch.max(outputs.data, 1)
             test_correct += torch.sum(id == y.data)
-        print('[%d,%d] loss:%.03f, train acc:%.4f, test acc:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/train_num, test_correct/test_num))
+        if config.verbose:
+            print('[%d,%d] loss:%.03f, train acc:%.4f, test acc:%.4f' % (epoch+1, config.epoch, sum_loss/iteration, train_correct/train_num, test_correct/test_num))
         
     return train_correct / train_num, test_correct / test_num
 
@@ -151,7 +152,8 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     #                                      test_rs.T, 
     #                                      train_label, 
     #                                      test_label)
-    print(tr_score, te_score)
+    if config.verbose:
+        print(tr_score, te_score)
     return -te_score.detach().cpu().item() # openbox 默认最小化loss
 
 def rollout(configuration):
@@ -175,6 +177,7 @@ def rollout(configuration):
     
     train_data, train_label, test_data, test_label = part_MNIST(train_num=config.train_num, test_num=config.test_num)
     loss = learn(model, (train_data, train_label), (test_data, test_label), config)
+    print(loss)
     return {'objs': (loss,)}
 
 def rollouts(config:Config):
