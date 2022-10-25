@@ -48,6 +48,26 @@ def Lorenz63(train_num=1000):
         
     return traj
 
+def part_CIFAR10(train_num=6000, test_num=1000):
+    train_dataset = torchvision.datasets.CIFAR10(root='./data/',
+                                                 train=True,
+                                                 download=False,
+                                                 transform=transforms.ToTensor())
+    test_dataset = torchvision.datasets.CIFAR10(root='./data/',
+                                                 train=False,
+                                                 download=False,
+                                                 transform=transforms.ToTensor())
+    random_list = random.sample(list(range(len(train_dataset))), train_num)
+    train_data = train_dataset.data[random_list]
+    train_label = train_dataset.targets[random_list]
+    
+    random_list = random.sample(list(range(len(test_dataset))), test_num)
+    test_data = test_dataset.data[random_list]
+    test_label = test_dataset.targets[random_list]
+    
+    return train_data, train_label, test_data, test_label
+
+
 def part_MNIST(train_num=6000, test_num=1000):
     train_dataset = torchvision.datasets.MNIST(root='./data/', 
                                                train=True, 
@@ -107,14 +127,15 @@ def MNIST_generation(batch_size=1):
 
 if __name__ == '__main__':
     # train_loader, test_loader = MNIST_generation()
+    train_data, train_label, test_data, test_label = part_CIFAR10(train_num=6000, test_num=1000)
     # train_data = Lorenz63(train_num=1000)
-    train_data = Rossler(a=0.5, b=2.0, c=4.0, dt=0.01, T=10000)
+    # train_data = Rossler(a=0.5, b=2.0, c=4.0, dt=0.01, T=10000)
     
     # plt.plot(train_data[:,0])
     # plt.plot(train_data[:,1])
     # plt.plot(train_data[:,2])
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.plot(train_data[:,0],train_data[:,1],train_data[:,2])
-    plt.show()
+    # fig = plt.figure()
+    # ax = fig.gca(projection='3d')
+    # ax.plot(train_data[:,0],train_data[:,1],train_data[:,2])
+    # plt.show()
     
