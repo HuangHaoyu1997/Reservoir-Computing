@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+
 def TimeWindowFunction(t, i, k, omega):
     '''
     P_time(t=0) = P_time(t=1) = 0

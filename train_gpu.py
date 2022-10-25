@@ -181,6 +181,14 @@ def rollout(configuration):
     return {'objs': (loss,)}
 
 def rollouts(config:Config):
+    random.seed(config.seed)
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed_all(config.seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
     model = torchRC(config)
 
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
@@ -192,6 +200,8 @@ def rollouts(config:Config):
 
 
 def param_search(run_time):
+    
+    
     # Define Search Space
     space = sp.Space()
     x1 = sp.Real(name="alpha", lower=0, upper=1, default_value=0.2)
@@ -228,6 +238,8 @@ def param_search(run_time):
         pickle.dump(history, f)
 
 if __name__ == '__main__':
+
+    
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
     
     param_search(run_time)

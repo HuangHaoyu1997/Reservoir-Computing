@@ -2,7 +2,8 @@ from scipy.special import beta
 
 
 class Config:
-    verbose = False
+    seed = 123
+    verbose = True
     N_in = 28*28      # input dim
     N_hid = 500       # hidden dim / number of reservoir neuron
     N_out = 10        # output dim
@@ -12,14 +13,14 @@ class Config:
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
     frames = 30       # static img to event-based frames
-    device = 'cpu'   # 'cpu', 'cuda'
+    device = 'cuda'   # 'cpu', 'cuda'
     batch_size = 1000 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
     
-    train_num = 6000
-    test_num = 3000
+    train_num = 60000
+    test_num = 10000
     epoch = 200       # training epoch for readout layer mlp
-    lr = 1e-3         # learning rate for mlp
+    lr = 2e-3         # learning rate for mlp
     
     
     # topology settings
@@ -35,7 +36,7 @@ class Config:
     noise_str = 0.05  # noise strength
     p_ER = 0.2        # connection probability when creating ER graph
     m_BA = 2          # number of edges to attach from a new node to existing nodes
-    k = 3             # number of clusters in A
+    k = 4             # number of clusters in A
     R = 0.2           # distance factor when deciding connections in random network
     
     R_ = 1.5          # radius of all nodes in DTW algorithm
@@ -54,5 +55,5 @@ class Config:
     Izh_d = 8         # [0.02, 10]
     Izh_thr = 30      # [20, 40]
     
-    LIF_decay = 0.9       # LIF membrane potential decay factor
-    LIF_thr = 0.9         # firing threshold
+    LIF_decay = 0.5       # LIF membrane potential decay factor
+    LIF_thr = 0.7         # firing threshold
