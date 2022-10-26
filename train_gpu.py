@@ -31,6 +31,7 @@ def inference(model:torchRC,
     spikes = None
     
     for i, (image, label) in enumerate(data_loader):
+        print('batch', i)
         batch = image.shape[0]
         x_enc = None
         for _ in range(frames):
@@ -185,8 +186,8 @@ def rollouts(config:Config):
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
     # loss = learn(model, train_loader, test_loader, config)
     
-    train_data, train_label, test_data, test_label = part_MNIST(train_num=config.train_num, test_num=config.test_num)
-    loss = learn(model, (train_data, train_label), (test_data, test_label), config)
+    train_loader, test_loader = part_DATA(config)
+    loss = learn(model, train_loader, test_loader, config)
     return {'objs': (loss,)}
 
 
