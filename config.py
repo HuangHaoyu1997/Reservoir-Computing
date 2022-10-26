@@ -7,22 +7,22 @@ class Config:
     
     
     data = 'cifar10'                                # 'mnist'
-    train_num = 50000
+    train_num = 20000
     test_num = 10000
-    epoch = 200                                     # training epoch for readout layer mlp
-    lr = 2e-3                                       # learning rate for mlp
+    epoch = 1000                                     # training epoch for readout layer mlp
+    lr = 5e-3                                       # learning rate for mlp
     
     N_in = 32*32 if data=='cifar10' else 28*28      # input dim
-    N_hid = 500                                     # hidden dim / number of reservoir neuron
+    N_hid = 1000                                     # hidden dim / number of reservoir neuron
     N_out = 10                                      # output dim
     alpha = 0.2                                     # memory factor
 
     layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
-    frames = 30       # static img to event-based frames
-    device = 'cpu'   # 'cpu', 'cuda'
-    batch_size = 50 # batch size for inference and training
+    frames = 80       # static img to event-based frames
+    device = 'cuda'   # 'cpu', 'cuda'
+    batch_size = 500 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
     
     
@@ -38,8 +38,8 @@ class Config:
     noise = True      # add noise in A
     noise_str = 0.05  # noise strength
     p_ER = 0.2        # connection probability when creating ER graph
-    m_BA = 2          # number of edges to attach from a new node to existing nodes
-    k = 4             # number of clusters in A
+    m_BA = 3          # number of edges to attach from a new node to existing nodes
+    k = 5             # number of clusters in A
     R = 0.2           # distance factor when deciding connections in random network
     
     R_ = 1.5          # radius of all nodes in DTW algorithm
