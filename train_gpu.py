@@ -37,7 +37,6 @@ def inference(model:torchRC,
             spike = (image > torch.rand(image.size())).float()
             if x_enc is None: x_enc = spike
             else: x_enc = torch.cat((x_enc, spike), dim=1)
-        # print('x_enc,', x_enc.shape, batch, frames, N_in)
         x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
         
         mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]

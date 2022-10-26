@@ -4,10 +4,18 @@ from scipy.special import beta
 class Config:
     seed = 123
     verbose = True
-    N_in = 28*28      # input dim
-    N_hid = 500       # hidden dim / number of reservoir neuron
-    N_out = 10        # output dim
-    alpha = 0.2       # memory factor
+    
+    
+    data = 'cifar10'                                # 'mnist'
+    train_num = 50000
+    test_num = 10000
+    epoch = 200                                     # training epoch for readout layer mlp
+    lr = 2e-3                                       # learning rate for mlp
+    
+    N_in = 32*32 if data=='cifar10' else 28*28      # input dim
+    N_hid = 500                                     # hidden dim / number of reservoir neuron
+    N_out = 10                                      # output dim
+    alpha = 0.2                                     # memory factor
 
     layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons
@@ -16,12 +24,6 @@ class Config:
     device = 'cuda'   # 'cpu', 'cuda'
     batch_size = 1000 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
-    
-    data = 'cifar10'  # 'mnist'
-    train_num = 60000
-    test_num = 10000
-    epoch = 200       # training epoch for readout layer mlp
-    lr = 2e-3         # learning rate for mlp
     
     
     # topology settings
