@@ -5,6 +5,8 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
+from config import Config
+
 def Rossler(a, b, c, dt, T):
     '''
     Implementation of chaotic Rossler system
@@ -48,27 +50,49 @@ def Lorenz63(train_num=1000):
         
     return traj
 
-def part_CIFAR10(train_num=6000, test_num=1000):
-    train_dataset = torchvision.datasets.CIFAR10(root='./data/',
-                                                 train=True,
-                                                 download=False,
-                                                 transform=transforms.ToTensor())
-    test_dataset = torchvision.datasets.CIFAR10(root='./data/',
-                                                 train=False,
-                                                 download=False,
-                                                 transform=transforms.ToTensor())
-    random_list = random.sample(list(range(len(train_dataset))), train_num)
-    train_data = train_dataset.data[random_list]
-    train_label = train_dataset.targets[random_list]
-    
-    random_list = random.sample(list(range(len(test_dataset))), test_num)
-    test_data = test_dataset.data[random_list]
-    test_label = test_dataset.targets[random_list]
-    
-    return train_data, train_label, test_data, test_label
+def part_DATA(config:Config):
+    if config.data == 'cifar10':
+        transform = transforms.Compose([
+            transforms.Grayscale(),
+            transforms.ToTensor(), # convert to tensor and rascale to [0,1]
+            ])
+        train_dataset = torchvision.datasets.CIFAR10(root='./data/',
+                                                    train=True,
+                                                    download=False,
+                                                    transform=transform)
+        test_dataset = torchvision.datasets.CIFAR10(root='./data/',
+                                                    train=False,
+                                                    download=False,
+                                                    transform=transform)
+    elif config.data == 'mnist':
+        transform = transforms.Compose([
+            transforms.ToTensor(), # convert to tensor and rascale to [0,1]
+            ])
+        train_dataset = torchvision.datasets.MNIST(root='./data/',
+                                                    train=True,
+                                                    download=False,
+                                                    transform=transform)
+        test_dataset = torchvision.datasets.MNIST(root='./data/',
+                                                    train=False,
+                                                    download=False,
+                                                    transform=transform)
+        
+    train_dataset, _ = torch.utils.data.random_split(train_dataset, 
+                                                     [config.train_num, len(train_dataset)-config.train_num])
+    test_dataset, _ = torch.utils.data.random_split(test_dataset, 
+                                                    [config.test_num, len(test_dataset)-config.test_num])
+    train_loader = torch.utils.data.DataLoader(train_dataset, 
+                                               batch_size=config.batch_size, 
+                                               shuffle=True, 
+                                               num_workers=0,)
+    test_loader = torch.utils.data.DataLoader(test_dataset, 
+                                               batch_size=config.batch_size, 
+                                               shuffle=False, 
+                                               num_workers=0,)
+    return train_loader, test_loader
 
 
-def part_MNIST(train_num=6000, test_num=1000):
+def part_MNIST(config:Config):
     train_dataset = torchvision.datasets.MNIST(root='./data/', 
                                                train=True, 
                                                download=False, 

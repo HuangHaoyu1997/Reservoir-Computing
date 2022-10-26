@@ -10,21 +10,17 @@ import numpy as np
 from RC import MLP, torchRC
 from config import Config
 from utils import encoding
-from data import MNIST_generation, part_MNIST
+from data import part_DATA
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
 
 def inference(model:torchRC,
-              config:Config,
               data_loader,
               ):
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
-    x, y = data_loader
-    batch = config.batch_size
-    iter = int(len(x) / batch)
     
     device = model.device
     frames = model.frames
@@ -34,12 +30,8 @@ def inference(model:torchRC,
     labels = []
     spikes = None
     
-    # for i, (image, label) in enumerate(data_loader):
-    for i in range(iter):
-        image = x[i*batch:(i+1)*batch]
-        label = y[i*batch:(i+1)*batch]
-    
-        # print('batch', i)
+    for i, (image, label) in enumerate(data_loader):
+        batch = image.shape[0]
         x_enc = None
         for _ in range(frames):
             spike = (image > torch.rand(image.size())).float()
@@ -137,8 +129,8 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     # labels.shape (500,)
     N_hid = model.N_hid
     
-    train_rs, train_label = inference(model, config, train_loader,)
-    test_rs, test_label = inference(model, config, test_loader,)
+    train_rs, train_label = inference(model, train_loader,)
+    test_rs, test_label = inference(model, test_loader,)
     
     mlp = MLP(2*N_hid, 128, 10).to(model.device)
     tr_score, te_score, = train_mlp_readout(model=mlp, 
@@ -175,8 +167,8 @@ def rollout(configuration):
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
     # loss = learn(model, train_loader, test_loader, config)
     
-    train_data, train_label, test_data, test_label = part_MNIST(train_num=config.train_num, test_num=config.test_num)
-    loss = learn(model, (train_data, train_label), (test_data, test_label), config)
+    train_loader, test_loader = part_DATA(config)
+    loss = learn(model, train_loader, test_loader, config)
     print(loss)
     return {'objs': (loss,)}
 

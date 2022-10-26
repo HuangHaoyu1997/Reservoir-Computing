@@ -17,6 +17,7 @@ class Config:
     batch_size = 1000 # batch size for inference and training
     sub_thr = False   # subtract thr to mem potential when firing
     
+    data = 'cifar10'  # 'mnist'
     train_num = 60000
     test_num = 10000
     epoch = 200       # training epoch for readout layer mlp
