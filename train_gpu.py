@@ -17,10 +17,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
 
-def inference(model:torchRC,
-              config:Config,
-              data_loader,
-              ):
+def inference(model:torchRC, config:Config, data_loader,):
     '''
     给定数据集和模型, 推断reservoir state vector
     '''
@@ -117,10 +114,18 @@ class AttackGym:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         self.model = torchRC(config)
-        self.episode_len = config
+        self.T = 0
     
     def step(self, action):
-        reward = rollout_attack(self.config, self.model)
+        # reservoir attacking
+        self.model.W_ins[0] = None
+        
+        obs, reward = rollout_attack(self.config, self.model)
+        
+        if self.T > self.config.episode_len:
+            done = True
+        else:
+            done = False
         return obs, reward, done
 
 def attack(model:torchRC,
@@ -169,12 +174,10 @@ def learn_readout(X_train,
             # accuracy_score(y_test_predictions, y_test.T)
 
 def learn(model:torchRC, train_loader, test_loader, config:Config):
-    N_hid = model.N_hid
-    
     train_rs, train_label = inference(model, config, train_loader,)
     test_rs, test_label = inference(model, config, test_loader,)
     
-    mlp = MLP(2*N_hid, config.mlp_hid, config.N_out).to(model.device)
+    mlp = MLP(2*config.N_hid, config.mlp_hid, config.N_out).to(model.device)
     train_score, test_score, = train_mlp_readout(model=mlp, 
                                                 config=config,
                                                 X_train=train_rs,
