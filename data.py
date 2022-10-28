@@ -63,6 +63,28 @@ class PoissonData(Dataset):
     def __len__(self):
         return self.length
 
+def Poisson_samples_fast(N_samples, N_in, T, rate):
+    samples = torch.zeros(N_samples, T, N_in, dtype=torch.float32)
+    for i in range(N_samples):
+        # average time interval for two next spikes
+        interval_mean = (T / rate) * torch.ones(N_in)
+        interval_generate = Poisson(interval_mean)
+        interval_sum = torch.zeros(N_in, dtype=torch.int32)
+        spike = torch.zeros(T, N_in, dtype=torch.int32)
+        while True:
+            # sample the next spiking interval
+            interval = interval_generate.sample().int()
+            interval_sum += interval
+            if (interval_sum>T-1).sum()==N_in:
+                break
+            # if interval_sum > T-1:
+            #     break
+            for i, interval in enumerate(interval_sum):
+                if interval < T-1:
+                    spike[interval, i] = 1.
+        samples[i, :, :] = spike
+    return samples
+
 def Poisson_samples(N_samples, N_in=50, T=100, rate=10):
     '''
     Generate dataset of Poisson spike trains with specific firing rates
@@ -103,8 +125,8 @@ def PoissonDataset(config:Config):
     # training set
     true_num = int(config.train_num/2)
     false_num = int(config.train_num/2)
-    true_data = Poisson_samples(true_num, config.N_in, config.frames, config.rate[0])
-    false_data = Poisson_samples(false_num, config.N_in, config.frames, config.rate[1])
+    true_data = Poisson_samples_fast(true_num, config.N_in, config.frames, config.rate[0])
+    false_data = Poisson_samples_fast(false_num, config.N_in, config.frames, config.rate[1])
     data = torch.cat((true_data, false_data), dim=0)
     label = torch.cat((torch.ones(true_num), torch.zeros(false_num)), dim=0)
     

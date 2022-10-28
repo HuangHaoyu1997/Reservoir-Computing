@@ -10,7 +10,7 @@ import numpy as np
 from RC import MLP, torchRC
 from config import Config
 from utils import encoding
-from data import part_DATA
+from data import PoissonDataset, part_DATA
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
@@ -186,7 +186,8 @@ def rollouts(config:Config):
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
     # loss = learn(model, train_loader, test_loader, config)
     
-    train_loader, test_loader = part_DATA(config)
+    # train_loader, test_loader = part_DATA(config)
+    train_loader, test_loader = PoissonDataset(config)
     loss = learn(model, train_loader, test_loader, config)
     return {'objs': (loss,)}
 

@@ -5,12 +5,12 @@ class Config:
     seed = 123
     verbose = True
     
-    
     data = 'Poisson'                                # 'mnist', 'cifar10'
+    
     if data == 'Poisson':
         rate = [10, 30]                                 # firing rate of Poisson spike trains, for true and false samples
-        train_num = 20000
-        test_num = 10000
+        train_num = 5000
+        test_num = 1000
         N_in = 50                                   # input dim
         N_out = 2                                   # output dim
     elif data == 'cifar10':
@@ -27,17 +27,16 @@ class Config:
     mlp_hid = 128
     epoch = 1000                                     # training epoch for readout layer mlp
     lr = 5e-3                                       # learning rate for mlp
+    device = 'cpu'                                 # 'cpu', 'cuda'
+    batch_size = 500                                # batch size for inference and training
 
     N_hid = 1000                                     # hidden dim / number of reservoir neuron
-    
     alpha = 0.2                                     # memory factor
-
     layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
     frames = 80       # static img to event-based frames
-    device = 'cuda'   # 'cpu', 'cuda'
-    batch_size = 500  # batch size for inference and training
+    
     sub_thr = False   # subtract thr to mem potential when firing
     
     
