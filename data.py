@@ -4,7 +4,8 @@ import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-
+from torch.distributions import Poisson
+from torch.utils.data import DataLoader, Dataset
 from config import Config
 
 def Rossler(a, b, c, dt, T):
@@ -29,10 +30,7 @@ def MackeyGlass(x0, tau, dt, T):
     implementation of Mackey-Glass System
     
     '''
-    y = []
-    T = np.arange(0, T, dt)
-    for t in T:
-        x = x0 + dt 
+    raise NotImplementedError
 
 def Lorenz63(train_num=1000):
     '''
@@ -49,6 +47,81 @@ def Lorenz63(train_num=1000):
         traj[i+1, 2] = traj[i, 2] + dt * (traj[i, 0] * traj[i, 1] - 8/3 * traj[i, 2])
         
     return traj
+
+
+class PoissonData(Dataset):
+    def __init__(self, data, label):
+        self.data = data
+        self.label = label
+        self.length = data.shape[0]
+    
+    def __getitem__(self, index):
+        label = self.label[index]
+        data = self.data[index]
+        return data, label
+    
+    def __len__(self):
+        return self.length
+
+def Poisson_samples(N_samples, N_in=50, T=100, rate=10):
+    '''
+    Generate dataset of Poisson spike trains with specific firing rates
+    N_in: dimension of a spike train
+    '''
+    assert T > rate and rate > 0
+    def Poisson_spike_train(T, rate):
+        '''
+        Generate a poisson spike train
+        T: length of spike trains
+        rate: large rate for more frequent spikes
+        '''
+        
+        # average time interval for two next spikes
+        interval_mean = int(T / rate)
+        interval_generate = Poisson(interval_mean)
+        
+        interval_sum = 0
+        spike = [0. for _ in range(T)]
+        while True:
+            # sample the next spiking interval
+            interval = interval_generate.sample().item()
+            interval_sum += int(interval)
+            if interval_sum > T-1:
+                break
+            spike[interval_sum] = 1.
+        return np.array(spike)
+    
+    samples = []
+    for i in range(N_samples):
+        sample = np.array([Poisson_spike_train(T, rate) for _ in range(N_in)]).T
+        samples.append(sample)
+    # samples = np.array(samples).T
+    samples = torch.tensor(samples, dtype=torch.float32)
+    return samples
+
+def PoissonDataset(config:Config):
+    # training set
+    true_num = int(config.train_num/2)
+    false_num = int(config.train_num/2)
+    true_data = Poisson_samples(true_num, config.N_in, config.frames, config.rate[0])
+    false_data = Poisson_samples(false_num, config.N_in, config.frames, config.rate[1])
+    data = torch.cat((true_data, false_data), dim=0)
+    label = torch.cat((torch.ones(true_num), torch.zeros(false_num)), dim=0)
+    
+    dataset = PoissonData(data, label)
+    trainloader = DataLoader(dataset=dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
+    
+    # testing set
+    true_num = int(config.test_num/2)
+    false_num = int(config.test_num/2)
+    true_data = Poisson_samples(true_num, config.N_in, config.frames, config.rate[0])
+    false_data = Poisson_samples(false_num, config.N_in, config.frames, config.rate[1])
+    data = torch.cat((true_data, false_data), dim=0)
+    label = torch.cat((torch.ones(true_num), torch.zeros(false_num)), dim=0)
+    
+    dataset = PoissonData(data, label)
+    testloader = DataLoader(dataset=dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
+    return trainloader, testloader
 
 def part_DATA(config:Config):
     if config.data == 'cifar10':

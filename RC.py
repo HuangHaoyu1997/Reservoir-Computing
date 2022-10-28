@@ -70,6 +70,7 @@ class torchRC(nn.Module):
         # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
         
         for t in range(self.frames):
+            # print(x[0,0,0].dtype, self.W_ins[0][0,0].dtype)
             U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
             r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
             y = self.alpha * r + (1-self.alpha) * (U + self.Bias[0])
@@ -350,54 +351,22 @@ class RCagent:
 
 if __name__ == '__main__':
     
-    from data import MNIST_generation
-    # ray.init()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_loader, test_loader = MNIST_generation(train_num=32,
-                                                 test_num=250,
-                                                 batch_size=2000)
-    
-    model = RC(N_input=28*28,
-               N_hidden=1000,
-               N_output=10,
-               alpha=0.8,
-               decay=None, # None for random decay of neurons
-               threshold=0.3,
-               R=0.2,
-               p=0.25,
-               gamma=1.0,
-               sub_thr=False,
-               )
-    modeltorch = torchRC(N_input=28*28,
-                         N_hidden=1000,
-                         N_output=10,
-                         alpha=0.8,
-                         decay=None,
-                         threshold=0.3,
-                         R=0.3,
-                         p=0.25,
-                         gamma=1.0,
-                         sub_thr=False,
-                         binary=False,
-                         frames=30,
-                         device=device,
-                         ).to(device)
-    print('zero weight in A:', (modeltorch.A==0).sum())
-    t = time.time()
-    for i, (images, lables) in enumerate(train_loader):
-        # enc_img = encoding(images, frames=20)
-        # mems, spike_train = model.forward_(enc_img)
-        mems, spike_train = modeltorch(images.to(device))
-        # print(spike_train.sum(1).shape)
-        firing_rate = spike_train.sum(0) / modeltorch.frames
-    print(time.time() - t)
-    
-    plt.figure()
-    for i in range(4):
-        for j in range(4):
-            plt.subplot(4,4,4*i+j+1)
-            plt.hist(firing_rate[4*i+j,:])
-    plt.show()
+    from data import Poisson_samples
+    from config import Config as config
+    import torch
+    torch.set_default_dtype(torch.float32)
+    config.batch_size = 32
+    config.frames = 100
+    config.N_in = 50
+    config.device = 'cpu'
+    sample_pos = Poisson_samples(N_samples=config.batch_size,
+                                 N_in=config.N_in,
+                                 T=config.frames,
+                                 rate=10)
+    model = torchRC(config)
+    mems, spikes = model(sample_pos.to(config.device))
+    repre = torch.cat((mems, spikes), dim=-1)
+    print(repre.shape)
     
     # learn(model, train_loader, frames=10)
     

@@ -132,7 +132,7 @@ def learn(model:torchRC, train_loader, test_loader, config:Config):
     train_rs, train_label = inference(model, train_loader,)
     test_rs, test_label = inference(model, test_loader,)
     
-    mlp = MLP(2*N_hid, 128, 10).to(model.device)
+    mlp = MLP(2*N_hid, config.mlp_hid, config.N_out).to(model.device)
     tr_score, te_score, = train_mlp_readout(model=mlp, 
                                             config=config,
                                             X_train=train_rs,
