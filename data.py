@@ -128,7 +128,7 @@ def PoissonDataset(config:Config):
     true_data = Poisson_samples_fast(true_num, config.N_in, config.frames, config.rate[0])
     false_data = Poisson_samples_fast(false_num, config.N_in, config.frames, config.rate[1])
     data = torch.cat((true_data, false_data), dim=0)
-    label = torch.cat((torch.ones(true_num), torch.zeros(false_num)), dim=0)
+    label = torch.cat((torch.ones(true_num, dtype=torch.long), torch.zeros(false_num, dtype=torch.long)), dim=0)
     
     dataset = PoissonData(data, label)
     trainloader = DataLoader(dataset=dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
@@ -139,7 +139,7 @@ def PoissonDataset(config:Config):
     true_data = Poisson_samples(true_num, config.N_in, config.frames, config.rate[0])
     false_data = Poisson_samples(false_num, config.N_in, config.frames, config.rate[1])
     data = torch.cat((true_data, false_data), dim=0)
-    label = torch.cat((torch.ones(true_num), torch.zeros(false_num)), dim=0)
+    label = torch.cat((torch.ones(true_num, dtype=torch.long), torch.zeros(false_num, dtype=torch.long)), dim=0)
     
     dataset = PoissonData(data, label)
     testloader = DataLoader(dataset=dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
@@ -148,6 +148,9 @@ def PoissonDataset(config:Config):
     return trainloader, testloader
 
 def part_DATA(config:Config):
+    '''
+    load dataset
+    '''
     if config.data == 'cifar10':
         transform = transforms.Compose([
             transforms.Grayscale(),
@@ -201,11 +204,11 @@ def part_MNIST(config:Config):
                                           download=False, 
                                           transform=transforms.ToTensor())
     
-    random_list = random.sample(list(range(len(train_dataset))), train_num)
+    random_list = random.sample(list(range(len(train_dataset))), config.train_num)
     train_data = train_dataset.train_data[random_list]
     train_label = train_dataset.targets[random_list]
     
-    random_list = random.sample(list(range(len(test_dataset))), test_num)
+    random_list = random.sample(list(range(len(test_dataset))), config.test_num)
     test_data = test_dataset.train_data[random_list]
     test_label = test_dataset.targets[random_list]
     

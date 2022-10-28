@@ -2,7 +2,9 @@
 train the pytorch version Reservoir Computing model in GPUs
 '''
 
+from distutils.command.config import config
 import time
+from turtle import done
 import torch
 import random
 import pickle
@@ -16,6 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
 
 def inference(model:torchRC,
+              config:Config,
               data_loader,
               ):
     '''
@@ -33,12 +36,15 @@ def inference(model:torchRC,
     for i, (image, label) in enumerate(data_loader):
         print('batch', i)
         batch = image.shape[0]
-        x_enc = None
-        for _ in range(frames):
-            spike = (image > torch.rand(image.size())).float()
-            if x_enc is None: x_enc = spike
-            else: x_enc = torch.cat((x_enc, spike), dim=1)
-        x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
+        if config.data == 'poisson':
+            x_enc = image
+        else:
+            x_enc = None
+            for _ in range(frames):
+                spike = (image > torch.rand(image.size())).float()
+                if x_enc is None: x_enc = spike
+                else: x_enc = torch.cat((x_enc, spike), dim=1)
+            x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
         
         mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
         # concat membrane and spike train as representation
@@ -96,6 +102,44 @@ def train_mlp_readout(model:MLP,
         
     return train_correct / train_num, test_correct / test_num
 
+class AttackGym:
+    def __init__(self, config:Config):
+        self.config = config
+        
+        self.reset()
+        
+    def reset(self,):
+        config = self.config
+        random.seed(config.seed)
+        np.random.seed(config.seed)
+        torch.manual_seed(config.seed)
+        torch.cuda.manual_seed_all(config.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        self.model = torchRC(config)
+        self.episode_len = config
+    
+    def step(self, action):
+        reward = rollout_attack(self.config, self.model)
+        return obs, reward, done
+
+def attack(model:torchRC,
+           config,
+           
+           ):
+    # attack
+    model.W_ins[0]
+    
+    # rollout
+    reward = rollout_attack(config, model)
+
+def rollout_attack(config:Config, model:torchRC):
+    if config.data == 'poisson':
+        train_loader, test_loader = PoissonDataset(config)
+    else:
+        train_loader, test_loader = part_DATA(config)
+    loss = learn(model, train_loader, test_loader, config)
+    return loss
 
 def learn_readout(X_train, 
                   X_validation, 
@@ -125,30 +169,31 @@ def learn_readout(X_train,
             # accuracy_score(y_test_predictions, y_test.T)
 
 def learn(model:torchRC, train_loader, test_loader, config:Config):
-    # rs.shape (500, 1000)
-    # labels.shape (500,)
     N_hid = model.N_hid
     
-    train_rs, train_label = inference(model, train_loader,)
-    test_rs, test_label = inference(model, test_loader,)
+    train_rs, train_label = inference(model, config, train_loader,)
+    test_rs, test_label = inference(model, config, test_loader,)
     
     mlp = MLP(2*N_hid, config.mlp_hid, config.N_out).to(model.device)
-    tr_score, te_score, = train_mlp_readout(model=mlp, 
-                                            config=config,
-                                            X_train=train_rs,
-                                            X_test=test_rs,
-                                            y_train=train_label,
-                                            y_test=test_label)
+    train_score, test_score, = train_mlp_readout(model=mlp, 
+                                                config=config,
+                                                X_train=train_rs,
+                                                X_test=test_rs,
+                                                y_train=train_label,
+                                                y_test=test_label)
     
     # tr_score, te_score, = learn_readout(train_rs.T, 
     #                                      test_rs.T, 
     #                                      train_label, 
     #                                      test_label)
     if config.verbose:
-        print(tr_score, te_score)
-    return -te_score.detach().cpu().item() # openbox 默认最小化loss
+        print(train_score, test_score)
+    return -test_score.detach().cpu().item() # openbox 默认最小化loss
 
 def rollout(configuration):
+    '''
+    for bayesian optimization
+    '''
     from config import Config
     config = Config
     
@@ -195,7 +240,9 @@ def rollouts(config:Config):
 
 
 def param_search(run_time):
-    
+    '''
+    openbox 默认最小化loss
+    '''
     
     # Define Search Space
     space = sp.Space()

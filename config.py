@@ -5,12 +5,12 @@ class Config:
     seed = 123
     verbose = True
     
-    data = 'poisson'                                # 'mnist', 'cifar10', 'poisson'
+    data = 'mnist'                                # 'mnist', 'cifar10', 'poisson'
     
     if data == 'poisson':
-        rate = [10, 30]                                 # firing rate of Poisson spike trains, for true and false samples
-        train_num = 5000
-        test_num = 1000
+        rate = [5, 50]                                 # firing rate of Poisson spike trains, for true and false samples
+        train_num = 500
+        test_num = 500
         N_in = 50                                   # input dim
         N_out = 2                                   # output dim
     elif data == 'cifar10':
@@ -24,18 +24,19 @@ class Config:
         N_in = 28*28
         N_out = 10
     
-    mlp_hid = 128
-    epoch = 1000                                     # training epoch for readout layer mlp
-    lr = 5e-3                                       # learning rate for mlp
+    frames = 100       # static img to event-based frames
+    episode_len = 50   # episode length when attacking reservoir model
+    mlp_hid = 32
+    epoch = 100                                     # training epoch for readout layer mlp
+    lr = 5e-5                                       # learning rate for mlp
     device = 'cpu'                                 # 'cpu', 'cuda'
-    batch_size = 500                                # batch size for inference and training
+    batch_size = 50                                # batch size for inference and training
 
     N_hid = 1000                                     # hidden dim / number of reservoir neuron
     alpha = 0.2                                     # memory factor
     layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
-    frames = 80       # static img to event-based frames
     
     sub_thr = False   # subtract thr to mem potential when firing
     
