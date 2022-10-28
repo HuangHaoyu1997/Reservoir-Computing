@@ -5,9 +5,9 @@ class Config:
     seed = 123
     verbose = True
     
-    data = 'Poisson'                                # 'mnist', 'cifar10'
+    data = 'poisson'                                # 'mnist', 'cifar10', 'poisson'
     
-    if data == 'Poisson':
+    if data == 'poisson':
         rate = [10, 30]                                 # firing rate of Poisson spike trains, for true and false samples
         train_num = 5000
         test_num = 1000
@@ -19,8 +19,8 @@ class Config:
         N_in = 32*32
         N_out = 10
     elif data == 'mnist':
-        train_num = 20000
-        test_num = 10000
+        train_num = 5000
+        test_num = 1000
         N_in = 28*28
         N_out = 10
     

@@ -185,9 +185,11 @@ def rollouts(config:Config):
 
     # train_loader, test_loader = MNIST_generation(batch_size=config.batch_size) # batch=2000 速度最快
     # loss = learn(model, train_loader, test_loader, config)
+    if config.data == 'poisson':
+        train_loader, test_loader = PoissonDataset(config)
+    else:
+        train_loader, test_loader = part_DATA(config)
     
-    # train_loader, test_loader = part_DATA(config)
-    train_loader, test_loader = PoissonDataset(config)
     loss = learn(model, train_loader, test_loader, config)
     return {'objs': (loss,)}
 

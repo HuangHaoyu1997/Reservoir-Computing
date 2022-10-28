@@ -143,6 +143,8 @@ def PoissonDataset(config:Config):
     
     dataset = PoissonData(data, label)
     testloader = DataLoader(dataset=dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
+    if config.verbose:
+        print('Data Generation Finish')
     return trainloader, testloader
 
 def part_DATA(config:Config):
@@ -184,6 +186,8 @@ def part_DATA(config:Config):
                                                batch_size=config.batch_size, 
                                                shuffle=False, 
                                                num_workers=0,)
+    if config.verbose:
+        print('Data Generation Finish')
     return train_loader, test_loader
 
 

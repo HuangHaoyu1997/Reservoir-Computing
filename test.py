@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from utils import *
 
 if __name__ == '__main__':
-    from config import Config
+    from config import Config as config
     t = time.time()
     # print(1000**2-(model.A==0).sum())
     # print(spectral_radius(model.A))
@@ -17,6 +17,6 @@ if __name__ == '__main__':
     # inference(model, train_loader, frames=20)
     
     
-    rollouts(Config)
+    rollouts(config)
     print(time.time()-t)
 
