@@ -143,7 +143,10 @@ def A_cluster(N_hid:int,
         A += salt_noise * zeros
     
     if (not binary) and noise:
-        A += np.random.uniform(low=-noise_strength, high=noise_strength, size=(N_hid, N_hid))
+        tmp = np.random.uniform(low=-noise_strength, high=noise_strength, size=(N_hid, N_hid))
+        idx = np.abs(tmp) < 0.8*noise_strength
+        tmp[idx] = 0
+        A += tmp
     if config.scale:
         A /= spectral_radius(A)
     return A

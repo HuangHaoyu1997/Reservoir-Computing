@@ -32,7 +32,7 @@ class Config:
     device = 'cpu'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
-    N_hid = 1000                                     # hidden dim / number of reservoir neuron
+    N_hid = 200                                     # hidden dim / number of reservoir neuron
     alpha = 0.2                                     # memory factor
     layer = 2         # number of reservoir layers
     p_in = 0.2        # ratio of inhibitory neurons

@@ -33,6 +33,11 @@ class torchRC(nn.Module):
         self.device = config.device
         
         self.W_ins, self.As, self.Bias = self.reset(config)
+        np.random.seed(config.seed)
+        torch.manual_seed(config.seed)
+        torch.cuda.manual_seed_all(config.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
         
     def membrane(self, mem, x, spike):
         '''

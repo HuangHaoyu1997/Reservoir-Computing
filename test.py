@@ -18,5 +18,6 @@ if __name__ == '__main__':
     
     
     rollouts(config)
+    rollout_attack
     print(time.time()-t)
 
