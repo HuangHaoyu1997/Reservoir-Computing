@@ -35,6 +35,8 @@ class AttackGym:
             done = False
         return obs, reward, done
 
+
+
 def test():
     '''
     测试，把图中某个神经元移除，具体做法是屏蔽邻接矩阵中，该神经元的输入权重和输出权重
