@@ -35,6 +35,41 @@ class AttackGym:
             done = False
         return obs, reward, done
 
+def test():
+    '''
+    测试，把图中某个神经元移除，具体做法是屏蔽邻接矩阵中，该神经元的输入权重和输出权重
+    对于随机输入，被屏蔽的神经元的膜电位模式与其他神经元，具有较为显著的差别。
+    '''
+    config.N_in = 10
+    config.N_hid = 100
+    config.frames = 13
+    model = torchRC(config)
+    A = model.As[0].detach().numpy()
+    print(A.shape)
+    G = nx.from_numpy_array(A, create_using=nx.DiGraph)
+
+    model.As[0] = model.As[0].detach()
+    model.As[0][:,15] = 0
+    model.As[0][15,:] = 0
+
+    model.As[0][:,17] = 0
+    model.As[0][17,:] = 0
+
+    out = model(torch.rand(12,config.frames, config.N_in))
+    means = []
+    vars = []
+    for i in range(100):
+        if i==15: continue
+        elif i==17: continue
+        means.append(out[0][:,:, i].mean().item())
+        vars.append(out[0][:,:,i].std().item())
+    print(np.mean(means))
+    print(np.mean(vars))
+    print(out[0][:,:,15].mean())
+    print(out[0][:,:,15].std())
+    print(out[0][:,:,17].mean())
+    print(out[0][:,:,17].std())
+
 def attack(model:torchRC,
            config,
            

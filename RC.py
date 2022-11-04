@@ -75,11 +75,9 @@ class torchRC(nn.Module):
         # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
         
         for t in range(self.frames):
-            # print(x[0,0,0].dtype, self.W_ins[0][0,0].dtype)
             U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
             r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
-            y = self.alpha * r + (1-self.alpha) * (U + self.Bias[0])
-            y = act(y) # activation function
+            y = act(self.alpha * r + (1 - self.alpha) * (U + self.Bias[0]))
             mem, spike = self.membrane(mem, y, spike)
             mems[:,t,:] = mem
             spikes[:,t,:] = spike

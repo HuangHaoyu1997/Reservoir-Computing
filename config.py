@@ -33,7 +33,7 @@ class Config:
     batch_size = 50                                # batch size for inference and training
 
     N_hid = 200                                     # hidden dim / number of reservoir neuron
-    alpha = 0.2                                     # memory factor
+    alpha = 0.8                                     # memory factor
     
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
