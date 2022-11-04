@@ -1,0 +1,49 @@
+Date : 2022-11-04 23:49:53
+Directory : f:\GitHubClone\Reservoir-Computing
+Total : 16 files,  12912 codes, 313 comments, 358 blanks, all 13583 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Log      |          1 |      9,356 |          0 |          1 |      9,357 |
+| Python   |         10 |      1,491 |        313 |        344 |      2,148 |
+| JSON     |          1 |      1,268 |          0 |          1 |      1,269 |
+| XML      |          3 |        796 |          0 |         10 |        806 |
+| Markdown |          1 |          1 |          0 |          2 |          3 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                         | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                            |         16 |     12,912 |        313 |        358 |     13,583 |
+| data                                                                         |          3 |        796 |          0 |         10 |        806 |
+| data\Cora                                                                    |          3 |        796 |          0 |         10 |        806 |
+| data\Cora\Cora                                                               |          3 |        796 |          0 |         10 |        806 |
+| data\Cora\Cora\processed                                                     |          3 |        796 |          0 |         10 |        806 |
+| openbox_logs                                                                 |          1 |      9,356 |          0 |          1 |      9,357 |
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                     | language | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| f:\GitHubClone\Reservoir-Computing\RC.py                                     | Python   |        437 |        174 |        127 |        738 |
+| f:\GitHubClone\Reservoir-Computing\README.md                                 | Markdown |          1 |          0 |          2 |          3 |
+| f:\GitHubClone\Reservoir-Computing\attack.py                                 | Python   |         65 |          3 |         18 |         86 |
+| f:\GitHubClone\Reservoir-Computing\config.py                                 | Python   |         63 |         10 |         14 |         87 |
+| f:\GitHubClone\Reservoir-Computing\data.py                                   | Python   |        203 |         27 |         37 |        267 |
+| f:\GitHubClone\Reservoir-Computing\data\Cora\Cora\processed\data.pt          | XML      |        792 |          0 |         10 |        802 |
+| f:\GitHubClone\Reservoir-Computing\data\Cora\Cora\processed\pre_filter.pt    | XML      |          2 |          0 |          0 |          2 |
+| f:\GitHubClone\Reservoir-Computing\data\Cora\Cora\processed\pre_transform.pt | XML      |          2 |          0 |          0 |          2 |
+| f:\GitHubClone\Reservoir-Computing\dynamics.py                               | Python   |        112 |         31 |         27 |        170 |
+| f:\GitHubClone\Reservoir-Computing\net.py                                    | Python   |        124 |         11 |         29 |        164 |
+| f:\GitHubClone\Reservoir-Computing\openbox_logs\OpenBox-parallel_async.log   | Log      |      9,356 |          0 |          1 |      9,357 |
+| f:\GitHubClone\Reservoir-Computing\test.ipynb                                | JSON     |      1,268 |          0 |          1 |      1,269 |
+| f:\GitHubClone\Reservoir-Computing\test.py                                   | Python   |          9 |          8 |          7 |         24 |
+| f:\GitHubClone\Reservoir-Computing\train.py                                  | Python   |        117 |         21 |         22 |        160 |
+| f:\GitHubClone\Reservoir-Computing\train_gpu.py                              | Python   |        197 |         19 |         36 |        252 |
+| f:\GitHubClone\Reservoir-Computing\utils.py                                  | Python   |        164 |          9 |         27 |        200 |
+| Total                                                                        |          |     12,912 |        313 |        358 |     13,583 |
++------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

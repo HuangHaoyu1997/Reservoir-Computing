@@ -3,7 +3,7 @@ import warnings
 
 from config import Config
 warnings.filterwarnings("ignore")
-
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import os, time, torch, pickle
@@ -14,9 +14,40 @@ from utils import *
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-class torchRC(nn.Module):
+class Reservoir(nn.Module):
+    '''reservoir layer'''
+    
+    def __init__(self, config:Config):
+        '''
+        input: x, spike
+        output: y
+        '''
+        super(Reservoir, self).__init__()
+        Win = config.Win
+        b = config.bias
+        N_in = config.N_in
+        N_hid = config.N_hid
+        device = config.device
+        self.alpha = config.alpha
+        
+        self.W_in = torchUniform(-Win, Win, size=(N_in, N_hid)).to(device)
+        self.A = torch.tensor(A_cluster(config)).to(device)
+        self.bias = torchUniform(-b, b, size=(N_hid)).to(device) # unif(-1,1)
+        
+    def forward(self, x, spike):
+        '''
+        x: (batch, N_in)
+        W_in: (N_in, N_hid)
+        spike: (batch, )
+        '''
+        U = torch.mm(x, self.W_in) # (batch, N_hid)
+        r = torch.mm(spike, self.A)
+        y = act(self.alpha * r + (1 - self.alpha) * (U + self.bias))
+        return y
+
+class AnnRC(nn.Module):
     '''
-    Reservoir Computing Model in pytorch version
+    Artificial-Neuron Version of Reservoir Computing Model in pytorch implementation
     '''
     def __init__(self, config:Config) -> None:
         super(torchRC, self).__init__()
@@ -33,11 +64,8 @@ class torchRC(nn.Module):
         self.device = config.device
         
         self.W_ins, self.As, self.Bias = self.reset(config)
-        np.random.seed(config.seed)
-        torch.manual_seed(config.seed)
-        torch.cuda.manual_seed_all(config.seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        set_seed(config)
+        
         
     def membrane(self, mem, x, spike):
         '''
@@ -115,20 +143,291 @@ class torchRC(nn.Module):
         W_ins, As, Bias = [], [], []
         for i in range(config.layer):
             if i == 0: # first layer, input dim -> hidden dim
-                W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
             else:      # second layer, hidden dim -> hidden dim
-                W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
-            A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
-                                                    config.p_in,
-                                                    config.gamma,
-                                                    config.binary,
-                                                    config.type[i],
-                                                    config.noise,
-                                                    config.noise_str,
-                                                    config,
-                                                    ))).to(self.device)
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            # A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
+            #                                         config.p_in,
+            #                                         config.gamma,
+            #                                         config.binary,
+            #                                         config.type[i],
+            #                                         config.noise,
+            #                                         config.noise_str,
+            #                                         config,
+            #                                         ))).to(self.device)
+            A = torch.tensor(A_cluster(self.N_hid, config.p_in, config.gamma, config.binary, config.type[i], config.noise,
+                                       config.noise_str,config,)).to(self.device)
             
-            bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            # bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            bias = torchUniform(-1, 1, size=(self.N_hid)).to(self.device) # unif(-1,1)
+            
+            W_ins.append(W_in)
+            As.append(A)
+            Bias.append(bias)
+            
+        # if self.decay is not a non-negative real number, initialize it to random vector
+        if not self.decay:
+            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
+        return W_ins, As, Bias
+
+class HybridRC(nn.Module):
+    NotImplementedError
+
+
+class MultiRC(nn.Module):
+    '''
+    Multi-layer Reservoir Computing Model in pytorch version
+    '''
+    def __init__(self, config:Config) -> None:
+        super(torchRC, self).__init__()
+        self.config = config
+        self.N_in = config.N_in
+        self.N_hid = config.N_hid
+        self.N_out = config.N_out
+        self.alpha = config.alpha
+        self.decay = config.LIF_decay
+        self.thr = config.LIF_thr
+        self.R = config.R
+        self.sub_thr = config.sub_thr
+        self.frames = config.frames
+        self.device = config.device
+        
+        self.W_ins, self.As, self.Bias = self.reset(config)
+        
+        res1_config = deepcopy(config)
+        self.res1 = Reservoir(res1_config)
+        
+        res2_config = deepcopy(config)
+        res2_config.N_in = res1_config.N_hid
+        self.res2 = Reservoir(res2_config)
+        
+        
+        set_seed(config)
+        
+    def membrane(self, mem, x, spike):
+        '''
+        update membrane voltage for reservoir neurons
+        
+        mem   [batch, N_hid]
+        x     [batch, N_hid]
+        spike [batch, N_hid]
+        '''
+        # print(mem.shape, spike.shape, x.shape)
+        # batch = mem.shape[0]
+        # decay = np.array([self.decay for _ in range(batch)])
+        mem = mem * self.decay - self.thr * (1-spike) + x # 
+        # mem = mem * self.decay * (1-spike) + x
+        
+        spike = torch.tensor(mem>self.thr, dtype=torch.float32)
+        return mem, spike
+    
+    def forward(self, x):
+        '''
+        inference function of spiking version
+        x: input tensor [batch, frames, N_in]
+        
+        return
+        mems:        [batch, frames, N_hid]
+        spike_train: [batch, frames, N_hid]
+        '''
+        batch = x.shape[0]
+        
+        spikes = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        
+        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device) # initial spike at time=0
+        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device) # initial membrane potential at time=0
+        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
+        for t in range(self.frames):
+            U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
+            r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
+            y = act(self.alpha * r + (1 - self.alpha) * (U + self.Bias[0]))
+            mem, spike = self.membrane(mem, y, spike)
+            mems[:,t,:] = mem
+            spikes[:,t,:] = spike
+        
+        
+        # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # mems2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        # mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
+        # # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
+        # for t in range(self.frames):
+        #     U = torch.mm(spikes[:,t,:], self.W_ins[1]) # (batch, N_hid)
+        #     r = torch.mm(spike, self.As[1]) # information from neighbors (batch, N_hid)
+        #     y = self.alpha * r + (1-self.alpha) * (U + self.Bias[1])
+        #     y = act(y) # activation function
+        #     mem, spike = self.membrane(mem, y, spike)
+        #     mems2[:,t,:] = mem
+        #     spikes2[:,t,:] = spike
+            
+        return mems, spikes
+        # return mems2, spikes2
+    
+    def reset(self, config:Config):
+        '''
+        random initialization:
+        W_in:      input weight matrix
+        A:         reservoir weight matrix
+        W_out:     readout weight matrix
+        r_history: state of reservoir neurons
+        mem:       membrane potential of reservoir neurons
+        
+        '''
+        assert len(config.type) == config.layer
+        W_ins, As, Bias = [], [], []
+        for i in range(config.layer):
+            if i == 0: # first layer, input dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            else:      # second layer, hidden dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            # A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
+            #                                         config.p_in,
+            #                                         config.gamma,
+            #                                         config.binary,
+            #                                         config.type[i],
+            #                                         config.noise,
+            #                                         config.noise_str,
+            #                                         config,
+            #                                         ))).to(self.device)
+            A = torch.tensor(A_cluster(self.N_hid, config.p_in, config.gamma, config.binary, config.type[i], config.noise,
+                                       config.noise_str,config,)).to(self.device)
+            
+            # bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            bias = torchUniform(-1, 1, size=(self.N_hid)).to(self.device) # unif(-1,1)
+            
+            W_ins.append(W_in)
+            As.append(A)
+            Bias.append(bias)
+            
+        # if self.decay is not a non-negative real number, initialize it to random vector
+        if not self.decay:
+            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
+        return W_ins, As, Bias
+
+
+class torchRC(nn.Module):
+    '''
+    Reservoir Computing Model in pytorch version
+    '''
+    def __init__(self, config:Config) -> None:
+        super(torchRC, self).__init__()
+        self.config = config
+        self.N_in = config.N_in
+        self.N_hid = config.N_hid
+        self.N_out = config.N_out
+        self.alpha = config.alpha
+        self.decay = config.LIF_decay
+        self.thr = config.LIF_thr
+        self.R = config.R
+        self.sub_thr = config.sub_thr
+        self.frames = config.frames
+        self.device = config.device
+        
+        self.W_ins, self.As, self.Bias = self.reset(config)
+        set_seed(config)
+        
+    def membrane(self, mem, x, spike):
+        '''
+        update membrane voltage for reservoir neurons
+        
+        mem   [batch, N_hid]
+        x     [batch, N_hid]
+        spike [batch, N_hid]
+        '''
+        # print(mem.shape, spike.shape, x.shape)
+        # batch = mem.shape[0]
+        # decay = np.array([self.decay for _ in range(batch)])
+        mem = mem * self.decay - self.thr * (1-spike) + x # 
+        # mem = mem * self.decay * (1-spike) + x
+        
+        spike = torch.tensor(mem>self.thr, dtype=torch.float32)
+        return mem, spike
+    
+    def forward(self, x):
+        '''
+        inference function of spiking version
+        x: input tensor [batch, frames, N_in]
+        
+        return
+        mems:        [batch, frames, N_hid]
+        spike_train: [batch, frames, N_hid]
+        '''
+        batch = x.shape[0]
+        
+        spikes = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        
+        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device) # initial spike at time=0
+        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device) # initial membrane potential at time=0
+        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
+        for t in range(self.frames):
+            U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
+            r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
+            y = act(self.alpha * r + (1 - self.alpha) * (U + self.Bias[0]))
+            mem, spike = self.membrane(mem, y, spike)
+            mems[:,t,:] = mem
+            spikes[:,t,:] = spike
+        
+        
+        # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # mems2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        # spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        # mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
+        # # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        
+        # for t in range(self.frames):
+        #     U = torch.mm(spikes[:,t,:], self.W_ins[1]) # (batch, N_hid)
+        #     r = torch.mm(spike, self.As[1]) # information from neighbors (batch, N_hid)
+        #     y = self.alpha * r + (1-self.alpha) * (U + self.Bias[1])
+        #     y = act(y) # activation function
+        #     mem, spike = self.membrane(mem, y, spike)
+        #     mems2[:,t,:] = mem
+        #     spikes2[:,t,:] = spike
+            
+        return mems, spikes
+        # return mems2, spikes2
+    
+    def reset(self, config:Config):
+        '''
+        random initialization:
+        W_in:      input weight matrix
+        A:         reservoir weight matrix
+        W_out:     readout weight matrix
+        r_history: state of reservoir neurons
+        mem:       membrane potential of reservoir neurons
+        
+        '''
+        assert len(config.type) == config.layer
+        W_ins, As, Bias = [], [], []
+        for i in range(config.layer):
+            if i == 0: # first layer, input dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            else:      # second layer, hidden dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            # A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
+            #                                         config.p_in,
+            #                                         config.gamma,
+            #                                         config.binary,
+            #                                         config.type[i],
+            #                                         config.noise,
+            #                                         config.noise_str,
+            #                                         config,
+            #                                         ))).to(self.device)
+            A = torch.tensor(A_cluster(self.N_hid, config.p_in, config.gamma, config.binary, config.type[i], config.noise,
+                                       config.noise_str,config,)).to(self.device)
+            
+            # bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            bias = torchUniform(-1, 1, size=(self.N_hid)).to(self.device) # unif(-1,1)
             
             W_ins.append(W_in)
             As.append(A)
@@ -357,19 +656,27 @@ if __name__ == '__main__':
     from data import Poisson_samples
     from config import Config as config
     import torch
-    torch.set_default_dtype(torch.float32)
-    config.batch_size = 32
-    config.frames = 100
-    config.N_in = 50
-    config.device = 'cpu'
-    sample_pos = Poisson_samples(N_samples=config.batch_size,
-                                 N_in=config.N_in,
-                                 T=config.frames,
-                                 rate=10)
-    model = torchRC(config)
-    mems, spikes = model(sample_pos.to(config.device))
-    repre = torch.cat((mems, spikes), dim=-1)
-    print(repre.shape)
+    Rlayer = Reservoir(config).to(config.device)
+    x = torch.rand(config.batch_size, config.N_in, dtype=torch.float32).to('cuda')
+    spike = torch.rand(config.batch_size, config.N_hid, dtype=torch.float32).to('cuda')
+    
+    print(Rlayer(x, spike).shape)
+    
+    # torch.set_default_dtype(torch.float32)
+    # config.batch_size = 32
+    # config.frames = 100
+    # config.N_in = 50
+    # config.device = 'cpu'
+    # sample_pos = Poisson_samples(N_samples=config.batch_size,
+    #                              N_in=config.N_in,
+    #                              T=config.frames,
+    #                              rate=10)
+    # model = torchRC(config)
+    # mems, spikes = model(sample_pos.to(config.device))
+    # repre = torch.cat((mems, spikes), dim=-1)
+    # print(repre.shape)
+    
+    
     
     # learn(model, train_loader, frames=10)
     

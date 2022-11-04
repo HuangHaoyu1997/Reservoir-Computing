@@ -5,6 +5,13 @@ from config import Config
 from net import ErdosRenyi, BarabasiAlbert, Developmental_Time_Window, RandomNetwork, WattsStrogatz
 import networkx as nx
 
+def set_seed(config:Config):
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed_all(config.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 def torchUniform(low, high, size):
     '''
     return pytorch uniform ranging [low, high]
@@ -57,14 +64,7 @@ def allocation(X, Y, Z):
     np.random.shuffle(V)
     return V
 
-def A_cluster(N_hid:int, 
-              p_in:float, 
-              gamma:float, 
-              binary:bool, 
-              type:str, 
-              noise:bool, 
-              noise_strength: float,
-              config:Config):
+def A_cluster(config:Config):
     '''
     generate A with multiple topologies
     
@@ -92,47 +92,54 @@ def A_cluster(N_hid:int,
     k: number of clusters
     
     '''
+    N_hid = config.N_hid
+    p_in = config.p_in
+    gamma = config.gamma
+    binary = config.binary
+    net_type = config.net_type
+    noise = config.noise
+    noise_strength = config.noise_str
+    N_cluster = config.k
     
-    
-    if type == 'ER':
+    if net_type == 'ER':
         A = ErdosRenyi(N_hid, config.p_ER)
 
-    elif type == 'BA':
+    elif net_type == 'BA':
         A = BarabasiAlbert(N_hid, config.m_BA)
     
-    elif type == 'WS':
+    elif net_type == 'WS':
         A = WattsStrogatz(N_hid, config.p_ER, config.m_BA)
 
-    elif type == 'WSC':
+    elif net_type == 'WSC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
-        npc = int(N_hid/config.k) # number of nodes per cluster
-        for k in range(config.k):
+        npc = int(N_hid / N_cluster) # number of nodes per cluster
+        for k in range(N_cluster):
             WS = WattsStrogatz(npc, config.p_ER, config.m_BA)
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = WS
             
-    elif type == 'ERC':
+    elif net_type == 'ERC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
-        npc = int(N_hid/config.k) # number of nodes per cluster
-        for k in range(config.k):
+        npc = int(N_hid / N_cluster) # number of nodes per cluster
+        for k in range(N_cluster):
             ER = ErdosRenyi(npc, config.p_ER)
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = ER
         
-    elif type == 'BAC':
+    elif net_type == 'BAC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
-        npc = int(N_hid/config.k) # number of nodes per cluster
-        for k in range(config.k):
+        npc = int(N_hid / N_cluster) # number of nodes per cluster
+        for k in range(N_cluster):
             BA = BarabasiAlbert(npc, config.m_BA)
             A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = BA
     
-    elif type == 'DTW':
+    elif net_type == 'DTW':
         A = Developmental_Time_Window(N_hid, 
-                                      config.k, 
+                                      N_cluster, 
                                       config.beta,
                                       config.R_,
                                       config.r,
                                       config.p_self,
                                       config.omega)
-    elif type == 'RAN':
+    elif net_type == 'RAN':
         A = RandomNetwork(N_hid, config.R)
 
     # add inhibitory synapses

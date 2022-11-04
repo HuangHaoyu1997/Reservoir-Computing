@@ -1,6 +1,3 @@
-from scipy.special import beta
-
-
 class Config:
     seed = 123
     verbose = True
@@ -29,9 +26,11 @@ class Config:
     mlp_hid = 32
     epoch = 100                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
-    device = 'cpu'                                 # 'cpu', 'cuda'
+    device = 'cuda'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
+    Win = 0.1         # strength of input linear weights, unif(-Win, Win)
+    bias = 1          # bias distribution in reservoir layers
     N_hid = 200                                     # hidden dim / number of reservoir neuron
     alpha = 0.8                                     # memory factor
     
@@ -40,10 +39,9 @@ class Config:
     
     sub_thr = False   # subtract thr to mem potential when firing
     
-    
     # topology settings
     binary = False    # binary matrix of reservoir A
-    net_type = ['WSC']      # type of reservoir connection topology
+    net_type = 'WSC'  # type of reservoir connection topology
                       # 'ER',  # Erdos-Renyi Random Network
                       # 'ERC', # Clusters of Erdos-Renyi Networks
                       # 'BA',  # Barabasi-Albert Network
@@ -52,7 +50,7 @@ class Config:
                       # 'WSC', # Clusters of Watts Strogatz small world networks
                       # 'RAN', # random network
                       # 'DTW', # Developmental Time Window for multi-cluster small-world network
-    layer = len(net_type) # number of reservoir layers
+    layers = 2 # number of reservoir layers
     
     scale = False     # rescale matrix A with spectral radius
     noise = True      # add noise in A
@@ -80,3 +78,10 @@ class Config:
     
     LIF_decay = 0.5       # LIF membrane potential decay factor
     LIF_thr = 0.7         # firing threshold
+
+if __name__ == '__main__':
+    from copy import deepcopy
+    a = Config()
+    b = deepcopy(a)
+    b.N_hid = 234
+    print(a.N_hid, b.N_hid)
