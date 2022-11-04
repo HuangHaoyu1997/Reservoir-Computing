@@ -72,13 +72,15 @@ def A_cluster(N_hid:int,
     p: ratio of inhibitory neyrons
     gamma: shape factor of gamma distribution in A weights
     binary: binary matrix A
-    type: ['ER',  # Erdos-Renyi Random Network
-           'ERC', # Clusters with Erdos-Renyi Networks
-           'BA',  # Barabasi-Albert Network
-           'BAC', # Clusters with Barabasi-Albert networks
-           'DTW', # Developmental Time Window for multi-cluster small-world network
-           'RAN', # random network
-           ]
+    net_type: ['ER',  # Erdos-Renyi Random Network
+               'ERC', # Clusters with Erdos-Renyi Networks
+               'BA',  # Barabasi-Albert Network
+               'BAC', # Clusters with Barabasi-Albert networks
+               'DTW', # Developmental Time Window for multi-cluster small-world network
+               'RAN', # random network
+               'WS',  # Watts Strogatz small world networks
+               'WSC', # Clusters of Watts Strogatz small world networks
+               ]
     noise: add noise or not
     noise_strength: probability of creating a noise connection
     kwargs:[
@@ -97,7 +99,17 @@ def A_cluster(N_hid:int,
 
     elif type == 'BA':
         A = BarabasiAlbert(N_hid, config.m_BA)
+    
+    elif type == 'WS':
+        A = WattsStrogatz(N_hid, config.p_ER, config.m_BA)
 
+    elif type == 'WSC':
+        A = np.zeros((N_hid, N_hid), dtype=np.float32)
+        npc = int(N_hid/config.k) # number of nodes per cluster
+        for k in range(config.k):
+            WS = WattsStrogatz(npc, config.p_ER, config.m_BA)
+            A[k*npc:(k+1)*npc, k*npc:(k+1)*npc] = WS
+            
     elif type == 'ERC':
         A = np.zeros((N_hid, N_hid), dtype=np.float32)
         npc = int(N_hid/config.k) # number of nodes per cluster

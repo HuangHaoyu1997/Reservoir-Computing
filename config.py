@@ -34,7 +34,7 @@ class Config:
 
     N_hid = 200                                     # hidden dim / number of reservoir neuron
     alpha = 0.2                                     # memory factor
-    layer = 2         # number of reservoir layers
+    
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
     
@@ -43,18 +43,21 @@ class Config:
     
     # topology settings
     binary = False    # binary matrix of reservoir A
-    type = ['BAC', 'BAC']      # type of reservoir connection topology
+    net_type = ['WSC']      # type of reservoir connection topology
                       # 'ER',  # Erdos-Renyi Random Network
                       # 'ERC', # Clusters of Erdos-Renyi Networks
                       # 'BA',  # Barabasi-Albert Network
                       # 'BAC', # Clusters of Barabasi-Albert networks
                       # 'WS',  # Watts Strogatz small world networks
                       # 'WSC', # Clusters of Watts Strogatz small world networks
+                      # 'RAN', # random network
                       # 'DTW', # Developmental Time Window for multi-cluster small-world network
+    layer = len(net_type) # number of reservoir layers
+    
     scale = False     # rescale matrix A with spectral radius
     noise = True      # add noise in A
     noise_str = 0.05  # noise strength
-    p_ER = 0.2        # connection probability when creating ER graph
+    p_ER = 0.2        # connection probability when creating edges, for ER and WS graphs
     m_BA = 3          # number of edges to attach from a new node to existing nodes
     k = 5             # number of clusters in A
     R = 0.2           # distance factor when deciding connections in random network
