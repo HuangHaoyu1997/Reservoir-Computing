@@ -45,9 +45,11 @@ class Config:
     binary = False    # binary matrix of reservoir A
     type = ['BAC', 'BAC']      # type of reservoir connection topology
                       # 'ER',  # Erdos-Renyi Random Network
-                      # 'ERC', # Clusters with Erdos-Renyi Networks
+                      # 'ERC', # Clusters of Erdos-Renyi Networks
                       # 'BA',  # Barabasi-Albert Network
-                      # 'BAC', # Clusters with Barabasi-Albert networks
+                      # 'BAC', # Clusters of Barabasi-Albert networks
+                      # 'WS',  # Watts Strogatz small world networks
+                      # 'WSC', # Clusters of Watts Strogatz small world networks
                       # 'DTW', # Developmental Time Window for multi-cluster small-world network
     scale = False     # rescale matrix A with spectral radius
     noise = True      # add noise in A

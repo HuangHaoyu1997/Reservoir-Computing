@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from config import Config
-from net import ErdosRenyi, BarabasiAlbert, Developmental_Time_Window, RandomNetwork
+from net import ErdosRenyi, BarabasiAlbert, Developmental_Time_Window, RandomNetwork, WattsStrogatz
 import networkx as nx
 
 def torchUniform(low, high, size):

@@ -93,6 +93,15 @@ def Developmental_Time_Window(N, k, beta, R, r, p_self, omega):
             N_coordinates.append(xyi)
     return A
 
+def WattsStrogatz(N, p, k):
+    '''
+    N: 
+    k: each node is connected with its k nearest neighbor
+    p: prob of rewiring edge
+    '''
+    H = nx.watts_strogatz_graph(N, k, p)
+    A = nx.to_numpy_matrix(H, dtype=np.float32)
+    return A
 
 def ErdosRenyi(N, p):
     '''
