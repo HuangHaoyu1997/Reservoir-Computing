@@ -48,41 +48,37 @@ class Reservoir(nn.Module):
 class AnnRC(nn.Module):
     '''
     Artificial-Neuron Version of Reservoir Computing Model in pytorch implementation
+    Multi-layer with serial structure
+    TODO how to train self.ff1 and self.ff2
     '''
     def __init__(self, config:Config) -> None:
         super(torchRC, self).__init__()
         self.config = config
         self.N_in = config.N_in
         self.N_hid = config.N_hid
-        self.N_out = config.N_out
+        self.mem_init = config.mem_init
         self.alpha = config.alpha
-        self.decay = config.LIF_decay
-        self.thr = config.LIF_thr
-        self.R = config.R
-        self.sub_thr = config.sub_thr
         self.frames = config.frames
         self.device = config.device
+        self.layers = config.layers
         
-        self.W_ins, self.As, self.Bias = self.reset(config)
+        
+        Win = config.Win
+        self.W_in1 = torchUniform(-Win, Win, size=(self.N_in, self.N_hid)).to(self.device)
+        self.A1 = torch.tensor(A_cluster(config)).to(self.device)
+        self.bias1 = torchUniform(-config.bias, config.bias, size=(self.N_hid)).to(self.device)
+        
+        
+        self.W_in2 = torchUniform(-Win, Win, size=(self.N_hid, self.N_hid)).to(self.device)
+        self.A2 = torch.tensor(A_cluster(config)).to(self.device)
+        self.bias2 = torchUniform(-config.bias, config.bias, size=(self.N_hid)).to(self.device)
+        
+        self.gelu = nn.GELU()
+        self.ff1 = nn.Linear(self.N_hid, self.N_hid)
+        self.ff2 = nn.Linear(self.N_hid, self.N_hid)
+        
+        # self.layernorm = nn.LayerNorm()
         set_seed(config)
-        
-        
-    def membrane(self, mem, x, spike):
-        '''
-        update membrane voltage for reservoir neurons
-        
-        mem   [batch, N_hid]
-        x     [batch, N_hid]
-        spike [batch, N_hid]
-        '''
-        # print(mem.shape, spike.shape, x.shape)
-        # batch = mem.shape[0]
-        # decay = np.array([self.decay for _ in range(batch)])
-        mem = mem * self.decay - self.thr * (1-spike) + x # 
-        # mem = mem * self.decay * (1-spike) + x
-        
-        spike = torch.tensor(mem>self.thr, dtype=torch.float32)
-        return mem, spike
     
     def forward(self, x):
         '''
@@ -90,44 +86,32 @@ class AnnRC(nn.Module):
         x: input tensor [batch, frames, N_in]
         
         return
-        mems:        [batch, frames, N_hid]
-        spike_train: [batch, frames, N_hid]
+        r:        [batch, frames, N_hid]
         '''
         batch = x.shape[0]
+        device = self.device
         
-        spikes = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        
-        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device) # initial spike at time=0
-        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device) # initial membrane potential at time=0
-        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        r = torch.zeros(self.layers, batch, self.frames+1, self.N_hid).to(device)
+        r[0,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device)
+        r[1,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device)
         
         for t in range(self.frames):
-            U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
-            r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
-            y = act(self.alpha * r + (1 - self.alpha) * (U + self.Bias[0]))
-            mem, spike = self.membrane(mem, y, spike)
-            mems[:,t,:] = mem
-            spikes[:,t,:] = spike
-        
-        
-        # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        # mems2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        # spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        # mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
-        # # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        
-        # for t in range(self.frames):
-        #     U = torch.mm(spikes[:,t,:], self.W_ins[1]) # (batch, N_hid)
-        #     r = torch.mm(spike, self.As[1]) # information from neighbors (batch, N_hid)
-        #     y = self.alpha * r + (1-self.alpha) * (U + self.Bias[1])
-        #     y = act(y) # activation function
-        #     mem, spike = self.membrane(mem, y, spike)
-        #     mems2[:,t,:] = mem
-        #     spikes2[:,t,:] = spike
+            # layer 1
+            U = torch.mm(x[:,t,:], self.W_in1) # (batch, N_hid)
+            r_ = torch.mm(r[0,:,t,:], self.A1) # information from neighbors (batch, N_hid)
+            y = self.alpha * r_ + (1-self.alpha) * act(U + self.bias1)
+            y = self.gelu(self.ff1(y)) + y
+            r[0,:,t+1,:] = y
             
-        return mems, spikes
-        # return mems2, spikes2
+            # layer 2
+            # change r[0,:,t+1,:] to x[:,t,:] for parallel version
+            U = torch.mm(r[0,:,t+1,:], self.W_in2) 
+            r_ = torch.mm(r[1,:,t,:], self.A2) # information from neighbors (batch, N_hid)
+            y = self.alpha * r_ + (1-self.alpha) * act(U + self.bias2)
+            y = self.gelu(self.ff2(y)) + y
+            r[1,:,t+1,:] = y
+            
+        return r
     
     def reset(self, config:Config):
         '''
@@ -195,12 +179,9 @@ class MultiRC(nn.Module):
         self.res1 = Reservoir(res1_config)
         
         res2_config = deepcopy(config)
-        res2_config.N_in = res1_config.N_hid
+        # res2_config.N_in = res1_config.N_hid
         self.res2 = Reservoir(res2_config)
         
-        
-        self.ff1 = nn.Linear(self.N_hid*2, self.N_hid)
-        self.ff2 = nn.Linear(self.N_hid*2, self.N_hid)
         # self.layernorm = nn.LayerNorm()
         set_seed(config)
         
