@@ -11,6 +11,7 @@ def set_seed(config:Config):
     torch.cuda.manual_seed_all(config.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    torch.set_default_dtype(torch.float32)
 
 def torchUniform(low, high, size):
     '''

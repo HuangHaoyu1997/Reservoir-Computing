@@ -185,16 +185,10 @@ class MultiRC(nn.Module):
         self.config = config
         self.N_in = config.N_in
         self.N_hid = config.N_hid
-        self.N_out = config.N_out
-        self.alpha = config.alpha
         self.decay = config.LIF_decay
         self.thr = config.LIF_thr
-        self.R = config.R
-        self.sub_thr = config.sub_thr
         self.frames = config.frames
         self.device = config.device
-        
-        self.W_ins, self.As, self.Bias = self.reset(config)
         
         res1_config = deepcopy(config)
         self.res1 = Reservoir(res1_config)
@@ -203,7 +197,7 @@ class MultiRC(nn.Module):
         res2_config.N_in = res1_config.N_hid
         self.res2 = Reservoir(res2_config)
         
-        
+        self.layernorm = nn.LayerNorm()
         set_seed(config)
         
     def membrane(self, mem, x, spike):
@@ -228,18 +222,18 @@ class MultiRC(nn.Module):
         spike_train: [batch, frames, N_hid]
         '''
         batch = x.shape[0]
+        layer = self.
+        device = self.device
         
-        spikes = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        mems = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
+        spikes = torch.zeros(batch, self.frames, self.N_hid).to(device)
+        mems = torch.zeros(batch, self.frames, self.N_hid).to(device)
         
-        spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device) # initial spike at time=0
-        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device) # initial membrane potential at time=0
-        # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
+        spike = torch.zeros((batch, self.N_hid)).to(device) # initial spike at time=0
+        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(device) # initial membrane potential at t=0
+        # mem = torch.zeros((batch, self.N_hid)).to(device)
         
         for t in range(self.frames):
-            U = torch.mm(x[:,t,:], self.W_ins[0]) # (batch, N_hid)
-            r = torch.mm(spike, self.As[0]) # information from neighbors (batch, N_hid)
-            y = act(self.alpha * r + (1 - self.alpha) * (U + self.Bias[0]))
+            y = self.res1(x[:,t,:], spike)
             mem, spike = self.membrane(mem, y, spike)
             mems[:,t,:] = mem
             spikes[:,t,:] = spike
@@ -654,8 +648,9 @@ if __name__ == '__main__':
     Rlayer = Reservoir(config).to(config.device)
     x = torch.rand(config.batch_size, config.N_in, dtype=torch.float32).to('cuda')
     spike = torch.rand(config.batch_size, config.N_hid, dtype=torch.float32).to('cuda')
-    
-    print(Rlayer(x, spike).shape)
+    layernorm = nn.LayerNorm([50, 200]).to('cuda')
+    y = Rlayer(x, spike)
+    print(y, layernorm(y))
     
     # torch.set_default_dtype(torch.float32)
     # config.batch_size = 32
