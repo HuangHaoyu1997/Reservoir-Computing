@@ -185,6 +185,7 @@ class MultiRC(nn.Module):
         self.config = config
         self.N_in = config.N_in
         self.N_hid = config.N_hid
+        self.mem_init = config.mem_init
         self.decay = config.LIF_decay
         self.thr = config.LIF_thr
         self.frames = config.frames
@@ -228,38 +229,26 @@ class MultiRC(nn.Module):
         layers = self.config.layers
         device = self.device
         
-        spikes = torch.zeros(layers, batch, self.frames, self.N_hid).to(device)
-        mems = torch.zeros(layers, batch, self.frames, self.N_hid).to(device)
+        spikes = torch.zeros(layers, batch, self.frames+1, self.N_hid).to(device) # including time=-1 initial spike vector
+        mems = torch.zeros(layers, batch, self.frames+1, self.N_hid).to(device)
+        mems[0,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device) # layer 1 initial membrane potential
+        mems[1,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device) # layer 2
         
-        spike = torch.zeros((batch, self.N_hid)).to(device) # initial spike at time=0
-        mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(device) # initial membrane potential at t=0
-        # mem = torch.zeros((batch, self.N_hid)).to(device)
         
         for t in range(self.frames):
             # layer 1
-            y = self.res1(x[:,t,:], spike)
-            mem, spike = self.membrane(mem, y, spike)
-            mems[0,:,t,:] = mem
-            spikes[0,:,t,:] = spike
-        
-        
-        # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        # mems2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
-        # spike = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        # mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(self.device)
-        # # mem = torch.zeros((batch, self.N_hid), dtype=torch.float32).to(self.device)
-        
-        # for t in range(self.frames):
-        #     U = torch.mm(spikes[:,t,:], self.W_ins[1]) # (batch, N_hid)
-        #     r = torch.mm(spike, self.As[1]) # information from neighbors (batch, N_hid)
-        #     y = self.alpha * r + (1-self.alpha) * (U + self.Bias[1])
-        #     y = act(y) # activation function
-        #     mem, spike = self.membrane(mem, y, spike)
-        #     mems2[:,t,:] = mem
-        #     spikes2[:,t,:] = spike
+            y = self.res1(x[:,t,:], spikes[0,:,t,:])
+            mem, spike = self.membrane(mems[0,:,t,:], y, spikes[0,:,t,:])
+            mems[0,:,t+1,:] = mem
+            spikes[0,:,t+1,:] = spike
+            
+            # layer 2
+            y = self.res2(x[:,t,:], spikes[1,:,t,:])
+            mem, spike = self.membrane(mems[1,:,t,:], y, spikes[1,:,t,:])
+            mems[1,:,t+1,:] = mem
+            spikes[1,:,t+1,:] = spike
             
         return mems, spikes
-        # return mems2, spikes2
     
     def reset(self, config:Config):
         '''

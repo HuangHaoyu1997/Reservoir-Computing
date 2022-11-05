@@ -31,6 +31,7 @@ class Config:
 
     Win = 0.1         # strength of input linear weights, unif(-Win, Win)
     bias = 1          # bias distribution in reservoir layers
+    mem_init = 0.1   # initial membrane potential distribution
     N_hid = 200                                     # hidden dim / number of reservoir neuron
     alpha = 0.8                                     # memory factor
     
