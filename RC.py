@@ -197,7 +197,10 @@ class MultiRC(nn.Module):
         res2_config.N_in = res1_config.N_hid
         self.res2 = Reservoir(res2_config)
         
-        self.layernorm = nn.LayerNorm()
+        
+        self.ff1 = nn.Linear(self.N_hid*2, self.N_hid)
+        self.ff2 = nn.Linear(self.N_hid*2, self.N_hid)
+        # self.layernorm = nn.LayerNorm()
         set_seed(config)
         
     def membrane(self, mem, x, spike):
@@ -222,21 +225,22 @@ class MultiRC(nn.Module):
         spike_train: [batch, frames, N_hid]
         '''
         batch = x.shape[0]
-        layer = self.
+        layers = self.config.layers
         device = self.device
         
-        spikes = torch.zeros(batch, self.frames, self.N_hid).to(device)
-        mems = torch.zeros(batch, self.frames, self.N_hid).to(device)
+        spikes = torch.zeros(layers, batch, self.frames, self.N_hid).to(device)
+        mems = torch.zeros(layers, batch, self.frames, self.N_hid).to(device)
         
         spike = torch.zeros((batch, self.N_hid)).to(device) # initial spike at time=0
         mem = torchUniform(0, 0.2, size=(batch, self.N_hid)).to(device) # initial membrane potential at t=0
         # mem = torch.zeros((batch, self.N_hid)).to(device)
         
         for t in range(self.frames):
+            # layer 1
             y = self.res1(x[:,t,:], spike)
             mem, spike = self.membrane(mem, y, spike)
-            mems[:,t,:] = mem
-            spikes[:,t,:] = spike
+            mems[0,:,t,:] = mem
+            spikes[0,:,t,:] = spike
         
         
         # spikes2 = torch.zeros(batch, self.frames, self.N_hid).to(self.device)
