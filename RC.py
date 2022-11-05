@@ -209,17 +209,12 @@ class MultiRC(nn.Module):
     def membrane(self, mem, x, spike):
         '''
         update membrane voltage for reservoir neurons
-        
         mem   [batch, N_hid]
         x     [batch, N_hid]
         spike [batch, N_hid]
         '''
-        # print(mem.shape, spike.shape, x.shape)
-        # batch = mem.shape[0]
-        # decay = np.array([self.decay for _ in range(batch)])
         mem = mem * self.decay - self.thr * (1-spike) + x # 
         # mem = mem * self.decay * (1-spike) + x
-        
         spike = torch.tensor(mem>self.thr, dtype=torch.float32)
         return mem, spike
     
