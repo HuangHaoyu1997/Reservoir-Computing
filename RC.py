@@ -49,10 +49,10 @@ class AnnRC(nn.Module):
     '''
     Artificial-Neuron Version of Reservoir Computing Model in pytorch implementation
     Multi-layer with serial structure
-    TODO how to train self.ff1 and self.ff2
+    TODO how to train self.ff1 and self.ff2?
     '''
     def __init__(self, config:Config) -> None:
-        super(torchRC, self).__init__()
+        super(AnnRC, self).__init__()
         self.config = config
         self.N_in = config.N_in
         self.N_hid = config.N_hid
@@ -157,7 +157,118 @@ class AnnRC(nn.Module):
         return W_ins, As, Bias
 
 class HybridRC(nn.Module):
-    NotImplementedError
+    '''
+    Reservoir Computing Model with multiple hybrid neuron models in pytorch version
+    '''
+    def __init__(self, config:Config) -> None:
+        super(HybridRC, self).__init__()
+        self.config = config
+        self.N_in = config.N_in
+        self.N_hid = config.N_hid
+        self.mem_init = config.mem_init
+        self.decay = config.LIF_decay
+        self.thr = config.LIF_thr
+        self.frames = config.frames
+        self.device = config.device
+        
+        res1_config = deepcopy(config)
+        self.res1 = Reservoir(res1_config)
+        
+        res2_config = deepcopy(config)
+        # res2_config.N_in = res1_config.N_hid
+        self.res2 = Reservoir(res2_config)
+        
+        # self.layernorm = nn.LayerNorm()
+        set_seed(config)
+        
+    def membrane(self, mem, x, spike):
+        '''
+        update membrane voltage for reservoir neurons
+        mem   [batch, N_hid]
+        x     [batch, N_hid]
+        spike [batch, N_hid]
+        '''
+        mem = mem * self.decay - self.thr * (1-spike) + x # 
+        # mem = mem * self.decay * (1-spike) + x
+        spike = torch.tensor(mem>self.thr, dtype=torch.float32)
+        return mem, spike
+    
+    def forward(self, x):
+        '''
+        inference function of spiking version
+        x: input tensor [batch, frames, N_in]
+        
+        return
+        mems:        [batch, frames, N_hid]
+        spike_train: [batch, frames, N_hid]
+        '''
+        batch = x.shape[0]
+        layers = self.config.layers
+        device = self.device
+        
+        spikes = torch.zeros(layers, batch, self.frames+1, self.N_hid).to(device) # including time=-1 initial spike vector
+        mems = torch.zeros(layers, batch, self.frames+1, self.N_hid).to(device)
+        mems[0,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device) # layer 1 initial membrane potential
+        mems[1,:,0,:] = torchUniform(-self.mem_init, self.mem_init, size=(batch, self.N_hid)).to(device) # layer 2
+        
+        
+        for t in range(self.frames):
+            # layer 1
+            y = self.res1(x[:,t,:], spikes[0,:,t,:])
+            mem, spike = self.membrane(mems[0,:,t,:], y, spikes[0,:,t,:])
+            mems[0,:,t+1,:] = mem
+            spikes[0,:,t+1,:] = spike
+            
+            # layer 2
+            y = self.res2(x[:,t,:], spikes[1,:,t,:])
+            mem, spike = self.membrane(mems[1,:,t,:], y, spikes[1,:,t,:])
+            mems[1,:,t+1,:] = mem
+            spikes[1,:,t+1,:] = spike
+            
+        return mems, spikes
+    
+    def reset(self, config:Config):
+        '''
+        random initialization:
+        W_in:      input weight matrix
+        A:         reservoir weight matrix
+        W_out:     readout weight matrix
+        r_history: state of reservoir neurons
+        mem:       membrane potential of reservoir neurons
+        
+        '''
+        assert len(config.type) == config.layer
+        W_ins, As, Bias = [], [], []
+        for i in range(config.layer):
+            if i == 0: # first layer, input dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            else:      # second layer, hidden dim -> hidden dim
+                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
+                W_in = torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
+            # A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
+            #                                         config.p_in,
+            #                                         config.gamma,
+            #                                         config.binary,
+            #                                         config.type[i],
+            #                                         config.noise,
+            #                                         config.noise_str,
+            #                                         config,
+            #                                         ))).to(self.device)
+            A = torch.tensor(A_cluster(self.N_hid, config.p_in, config.gamma, config.binary, config.type[i], config.noise,
+                                       config.noise_str,config,)).to(self.device)
+            
+            # bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
+            bias = torchUniform(-1, 1, size=(self.N_hid)).to(self.device) # unif(-1,1)
+            
+            W_ins.append(W_in)
+            As.append(A)
+            Bias.append(bias)
+            
+        # if self.decay is not a non-negative real number, initialize it to random vector
+        if not self.decay:
+            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
+        return W_ins, As, Bias
 
 
 class MultiRC(nn.Module):
@@ -165,7 +276,7 @@ class MultiRC(nn.Module):
     Multi-layer Reservoir Computing Model in pytorch version
     '''
     def __init__(self, config:Config) -> None:
-        super(torchRC, self).__init__()
+        super(MultiRC, self).__init__()
         self.config = config
         self.N_in = config.N_in
         self.N_hid = config.N_hid
