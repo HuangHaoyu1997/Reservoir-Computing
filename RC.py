@@ -352,6 +352,8 @@ class MultiRC(nn.Module):
         mem:       membrane potential of reservoir neurons
         
         '''
+        
+        
         assert len(config.type) == config.layer
         W_ins, As, Bias = [], [], []
         for i in range(config.layer):
