@@ -2,7 +2,7 @@ class Config:
     seed = 123
     verbose = True
     
-    data = 'poisson'                                # 'mnist', 'cifar10', 'poisson'
+    data = 'mnist'                                # 'mnist', 'cifar10', 'poisson'
     
     if data == 'poisson':
         rate = [5, 50]                                 # firing rate of Poisson spike trains, for true and false samples
@@ -26,7 +26,7 @@ class Config:
     mlp_hid = 32
     epoch = 100                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
-    device = 'cuda'                                 # 'cpu', 'cuda'
+    device = 'cpu'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
     Win = 0.1         # strength of input linear weights, unif(-Win, Win)
