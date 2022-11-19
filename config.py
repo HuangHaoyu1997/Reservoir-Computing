@@ -26,10 +26,10 @@ class Config:
     mlp_hid = 32
     epoch = 100                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
-    device = 'cuda'                                 # 'cpu', 'cuda'
+    device = 'cpu'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
-    Win = 0.1         # strength of input linear weights, unif(-Win, Win)
+    Win = 1.0         # strength of input linear weights, unif(-Win, Win)
     bias = 1          # bias distribution in reservoir layers
     mem_init = 0.1   # initial membrane potential distribution
     N_hid = 200                                     # hidden dim / number of reservoir neuron
@@ -51,6 +51,7 @@ class Config:
                       # 'WSC', # Clusters of Watts Strogatz small world networks
                       # 'RAN', # random network
                       # 'DTW', # Developmental Time Window for multi-cluster small-world network
+    
     layers = 2 # number of reservoir layers
     
     scale = False     # rescale matrix A with spectral radius
@@ -77,7 +78,7 @@ class Config:
     Izh_d = 8         # [0.02, 10]
     Izh_thr = 30      # [20, 40]
     
-    LIF_decay = 0.5       # LIF membrane potential decay factor
+    LIF_decay = 0 # 0.5       # LIF membrane potential decay factor, 0 for random decay
     LIF_thr = 0.7         # firing threshold
 
 if __name__ == '__main__':
