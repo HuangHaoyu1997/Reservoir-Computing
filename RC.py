@@ -357,7 +357,7 @@ class torchRC(nn.Module):
         self.decay = config.LIF_decay
         # if self.decay is not a non-negative real number, initialize it to random vector
         if not self.decay:
-            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)
+            self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(config.device)
             
         self.thr = config.LIF_thr
         self.R = config.R
