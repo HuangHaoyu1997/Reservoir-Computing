@@ -24,6 +24,11 @@ class Config:
     frames = 100       # static img to event-based frames
     episode_len = 50   # episode length when attacking reservoir model
     mlp_hid = 32
+    
+    egat_hid = 32     # hidden node feature dim of Edge GAT layer
+    egat_out = 16     # output node feature dim of Edge GAT layer
+    egat_heads = 3    # multi-head attention
+    
     epoch = 100                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
     device = 'cpu'                                 # 'cpu', 'cuda'
