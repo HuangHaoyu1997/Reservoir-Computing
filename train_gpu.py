@@ -314,15 +314,15 @@ if __name__ == '__main__':
     print(train_rs.shape)
     Egat = EGAT(config).to(config.device)
     
-    A = model.reservoir.A.numpy()
+    A = model.reservoir.A.cpu().numpy()
     edge_index = torch.tensor(np.where(A!=0), dtype=torch.long)
-    edge_attr = torch.tensor(np.array([A[i,j] for i, j in edge_index.T]))
+    edge_attr = torch.tensor(np.array([A[i,j] for i, j in edge_index.T])).to(config.device)
     u = edge_index[0]
     v = edge_index[1]
-    g = dgl.graph((u, v))
+    g = dgl.graph((u, v)).to(config.device)
     
     loss_func = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(Egat.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(Egat.parameters(), lr=0.01)
     
     for e in range(100):
         node_feats = None

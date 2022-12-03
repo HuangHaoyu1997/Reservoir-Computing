@@ -579,26 +579,31 @@ import torch.nn.functional as F
 class EGAT(nn.Module):
     def __init__(self, config:Config):
         super(EGAT, self).__init__()
+        self.config = config
         self.egat1 = EGATConv(in_node_feats=config.frames,
                               in_edge_feats=1, # edge特征=Aij
                               out_node_feats=config.egat_hid,
                               out_edge_feats=1,
                               num_heads=config.egat_heads)
         
-        self.egat2 = EGATConv(in_node_feats=config.egat_hid,
+        self.egat2 = EGATConv(in_node_feats=config.egat_hid*config.egat_heads,
                               in_edge_feats=1, # edge特征=Aij
                               out_node_feats=config.egat_out,
                               out_edge_feats=1,
                               num_heads=config.egat_heads)
-        self.fc = nn.Linear(config.egat_out, config.N_out)
+        self.fc = nn.Linear(config.egat_out * config.egat_heads, config.N_out)
         
     def forward(self, g, node_feats, edge_feats):
         h, _ = self.egat1(g, node_feats, edge_feats) # h.shape [nodes, heads, feats]
-        h = F.relu(h).mean(1) # h.shape [nodes, feats]
+        h = h.view(self.config.N_hid, -1)
+        h = F.relu(h) # h.shape [nodes, heads*feats]
         h, _ = self.egat2(g, h, edge_feats)
-        h = h.mean(1) # average on head dim
-        h = h.mean(0) # average on node dim
-        out = self.fc(h)
+        # h = h.mean(0) # average on node dim
+        g.ndata['h'] = h.view(self.config.N_hid, -1)
+        node_sum_vec = dgl.mean_nodes(g, 'h')
+        # print(node_sum_vec.shape)
+        out = self.fc(node_sum_vec)
+        # 
         return out
         
 class ConvNet(nn.Module):
