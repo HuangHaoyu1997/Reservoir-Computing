@@ -31,7 +31,7 @@ class Config:
     
     epoch = 100                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
-    device = 'cuda:1'                                 # 'cpu', 'cuda'
+    device = 'cuda:0'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
     Win = 1.0         # strength of input linear weights, unif(-Win, Win)
