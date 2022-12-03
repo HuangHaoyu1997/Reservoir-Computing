@@ -99,7 +99,7 @@ def train_egat(model:EGAT,
     '''
     train the EGAT from reservoir computing model output series
     '''
-    
+    pass
     
 def train_mlp_readout(model:MLP,
                       config:Config,
@@ -308,11 +308,11 @@ if __name__ == '__main__':
     config.N_out = 10
     train_loader, test_loader = part_DATA(config)
 
-    model = torchRC(config)
+    model = torchRC(config).to(config.device)
     train_rs, train_label = inference_new(model, config, train_loader,)
     
     print(train_rs.shape)
-    Egat = EGAT(config)
+    Egat = EGAT(config).to(config.device)
     
     A = model.reservoir.A.numpy()
     edge_index = torch.tensor(np.where(A!=0), dtype=torch.long)
