@@ -16,7 +16,44 @@ from data import PoissonDataset, part_DATA
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from openbox import Optimizer, sp, ParallelOptimizer
+from RC import EGAT
 
+def inference_new(model:torchRC, config:Config, data_loader,):
+    '''
+    用于Reservoir + GNN 进行图像分类的inference函数
+    torchRC输出的mems和spikes [batch, frames, N_hid]
+    不再对frames这一维度求平均，以合并维度，达到一个vector表征一个sample的目的
+    而是用一个time series（长度frames）来表示一个神经元的动力过程，用所有神经元的time series联合表示reservoir的推理过程，即对一个样本的表征
+    
+    2022年12月1日06:10:28
+    '''
+    device = model.device
+    frames = model.frames
+    device = model.device
+    N_in = model.N_in
+    # start_time = time.time()
+    labels = []
+    spikes = None
+    for i, (image, label) in enumerate(data_loader):
+        print('batch', i)
+        batch = image.shape[0]
+        x_enc = None
+        for _ in range(frames):
+            spike = (image > torch.rand(image.size())).float()
+            if x_enc is None: x_enc = spike
+            else: x_enc = torch.cat((x_enc, spike), dim=1)
+        x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
+        mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
+        # concat membrane and spike train as representation
+        concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
+        print(concat.shape)
+        if spikes is None: spikes = concat # spikes = spike_sum
+        else: spikes = torch.cat((spikes, concat), dim=0)
+        labels.extend(label.numpy().tolist())
+    # print('Time elasped:', time.time() - start_time)
+    return spikes.detach(), torch.tensor(labels).to(device)
+    
+    
 def inference(model:torchRC, config:Config, data_loader,):
     '''
     给定数据集和模型, 推断reservoir state vector
@@ -44,6 +81,7 @@ def inference(model:torchRC, config:Config, data_loader,):
             x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
         
         mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
+
         # concat membrane and spike train as representation
         concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
         concat = concat.mean(1) # [batch, 2*N_hid]
@@ -55,6 +93,14 @@ def inference(model:torchRC, config:Config, data_loader,):
     # return spikes.detach().cpu().numpy(), np.array(labels)
     return spikes.detach(), torch.tensor(labels).to(device)
 
+def train_egat(model:EGAT,
+               config:Config,
+               ):
+    '''
+    train the EGAT from reservoir computing model output series
+    '''
+    
+    
 def train_mlp_readout(model:MLP,
                       config:Config,
                       X_train,
@@ -248,5 +294,51 @@ if __name__ == '__main__':
     
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
     
-    param_search(run_time)
-    # inference()
+    # param_search(run_time)
+    from config import Config
+    from data import part_DATA
+    from RC import torchRC, EGAT
+    import dgl
+
+    config = Config()
+    config.data = 'mnist'
+    config.train_num = 1000
+    config.test_num = 1000
+    config.N_in = 28*28
+    config.N_out = 10
+    train_loader, test_loader = part_DATA(config)
+
+    model = torchRC(config)
+    train_rs, train_label = inference_new(model, config, train_loader,)
+    
+    print(train_rs.shape)
+    Egat = EGAT(config)
+    
+    A = model.reservoir.A.numpy()
+    edge_index = torch.tensor(np.where(A!=0), dtype=torch.long)
+    edge_attr = torch.tensor(np.array([A[i,j] for i, j in edge_index.T]))
+    u = edge_index[0]
+    v = edge_index[1]
+    g = dgl.graph((u, v))
+    
+    loss_func = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(Egat.parameters(), lr=0.001)
+    
+    for e in range(100):
+        node_feats = None
+        for i in range(config.train_num):
+            v = train_rs[i][1:, :].T
+            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
+            if node_feats is None:
+                node_feats = node_feat.view(1, -1)
+            else:
+                node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
+            
+            # print(node_feat.view(1,-1).shape)
+        optimizer.zero_grad()
+        pred = node_feats.argmax(1)
+        
+        loss = loss_func(node_feats, train_label)
+        loss.backward()
+        optimizer.step()
+        print((pred == train_label).sum()/config.train_num, loss.item())

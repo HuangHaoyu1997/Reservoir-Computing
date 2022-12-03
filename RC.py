@@ -404,7 +404,7 @@ class torchRC(nn.Module):
             mems[0,:,t+1,:] = mem
             spikes[0,:,t+1,:] = spike
             
-        return mems, spikes
+        return mems[0], spikes[0]
     
 class RC:
     '''

@@ -181,6 +181,7 @@ def part_DATA(config:Config):
                                                      [config.train_num, len(train_dataset)-config.train_num])
     test_dataset, _ = torch.utils.data.random_split(test_dataset, 
                                                     [config.test_num, len(test_dataset)-config.test_num])
+    
     train_loader = torch.utils.data.DataLoader(train_dataset, 
                                                batch_size=config.batch_size, 
                                                shuffle=True, 

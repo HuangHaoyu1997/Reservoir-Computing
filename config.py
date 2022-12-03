@@ -2,7 +2,7 @@ class Config:
     seed = 123
     verbose = True
     
-    data = 'poisson'                                # 'mnist', 'cifar10', 'poisson'
+    data = 'mnist'                                # 'mnist', 'cifar10', 'poisson'
     
     if data == 'poisson':
         rate = [5, 50]                                 # firing rate of Poisson spike trains, for true and false samples
@@ -21,7 +21,7 @@ class Config:
         N_in = 28*28
         N_out = 10
     
-    frames = 100       # static img to event-based frames
+    frames = 30       # static img to event-based frames
     episode_len = 50   # episode length when attacking reservoir model
     mlp_hid = 32
     
