@@ -322,7 +322,7 @@ if __name__ == '__main__':
     loss_func = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(Egat.parameters(), lr=config.lr_egat)
     
-    batch_size = 50
+    batch_size = 100
     batch_num = int(config.train_num/batch_size)
     for e in range(config.epoch_egat): # 1000 epoch
         # training loop
@@ -332,7 +332,7 @@ if __name__ == '__main__':
         iter = 0
         for i in range(config.train_num):
             v = train_rs[i][1:, :].T
-            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
+            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
             if node_feats is None:
                 node_feats = node_feat.view(1, -1)
             else:
