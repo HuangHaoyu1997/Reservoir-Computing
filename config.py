@@ -30,6 +30,7 @@ class Config:
     egat_heads = 3    # multi-head attention
     
     epoch = 100                                     # training epoch for readout layer mlp
+    epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
     device = 'cuda:0'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training

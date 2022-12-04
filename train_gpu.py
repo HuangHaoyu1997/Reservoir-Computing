@@ -324,8 +324,13 @@ if __name__ == '__main__':
     loss_func = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(Egat.parameters(), lr=0.01)
     
-    for e in range(100):
+    # training loop
+    for e in range(config.epoch_egat): # 1000 epoch
+        
         node_feats = None
+        correct_num = 0
+        loss_epoch = 0
+        iter = 0
         for i in range(config.train_num):
             v = train_rs[i][1:, :].T
             node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
@@ -334,11 +339,17 @@ if __name__ == '__main__':
             else:
                 node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
             
-            # print(node_feat.view(1,-1).shape)
-        optimizer.zero_grad()
-        pred = node_feats.argmax(1)
-        
-        loss = loss_func(node_feats, train_label)
-        loss.backward()
-        optimizer.step()
-        print((pred == train_label).sum()/config.train_num, loss.item())
+            if node_feats.shape[0] % 100 == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
+                optimizer.zero_grad()
+                pred = node_feats.argmax(1)
+                loss = loss_func(node_feats, train_label[iter*100:(iter+1)*100])
+                loss.backward()
+                optimizer.step()
+                node_feats = None
+                correct_num += (pred == train_label[iter*100:(iter+1)*100]).sum().cpu().item()
+                loss_epoch += loss.item()
+                iter += 1
+            
+        print(correct_num/config.train_num, loss_epoch)
+        with open('./log/test3.log', 'a') as f:
+            f.write(str(correct_num/config.train_num) + ',' + str(loss_epoch) + '\n')
