@@ -577,6 +577,10 @@ from dgl.nn import EGATConv
 import torch.nn.functional as F
 
 class EGAT(nn.Module):
+    '''
+    Graph attention layer that handles edge features
+    https://docs.dgl.ai/generated/dgl.nn.pytorch.conv.EGATConv.html#dgl.nn.pytorch.conv.EGATConv
+    '''
     def __init__(self, config:Config):
         super(EGAT, self).__init__()
         self.config = config

@@ -293,7 +293,6 @@ if __name__ == '__main__':
 
     
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
-    
     # param_search(run_time)
     from config import Config
     from data import part_DATA
@@ -310,8 +309,7 @@ if __name__ == '__main__':
 
     model = torchRC(config).to(config.device)
     train_rs, train_label = inference_new(model, config, train_loader,)
-    
-    print(train_rs.shape)
+    test_rs, test_label = inference_new(model, config, test_loader,)
     Egat = EGAT(config).to(config.device)
     
     A = model.reservoir.A.cpu().numpy()
@@ -322,11 +320,12 @@ if __name__ == '__main__':
     g = dgl.graph((u, v)).to(config.device)
     
     loss_func = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(Egat.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(Egat.parameters(), lr=config.lr_egat)
     
-    # training loop
+    batch_size = 50
+    batch_num = int(config.train_num/batch_size)
     for e in range(config.epoch_egat): # 1000 epoch
-        
+        # training loop
         node_feats = None
         correct_num = 0
         loss_epoch = 0
@@ -339,17 +338,34 @@ if __name__ == '__main__':
             else:
                 node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
             
-            if node_feats.shape[0] % 100 == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
+            if node_feats.shape[0] % batch_size == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
                 optimizer.zero_grad()
                 pred = node_feats.argmax(1)
-                loss = loss_func(node_feats, train_label[iter*100:(iter+1)*100])
+                loss = loss_func(node_feats, train_label[iter*batch_size:(iter+1)*batch_size])
                 loss.backward()
                 optimizer.step()
                 node_feats = None
-                correct_num += (pred == train_label[iter*100:(iter+1)*100]).sum().cpu().item()
+                correct_num += (pred == train_label[iter*batch_size:(iter+1)*batch_size]).sum().cpu().item()
                 loss_epoch += loss.item()
                 iter += 1
+        
+        # testing loop
+        node_feats = None
+        for i in range(config.test_num):
+            v = test_rs[i][1:, :].T
+            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
+            if node_feats is None:
+                node_feats = node_feat.view(1, -1)
+            else:
+                node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
+        pred = node_feats.argmax(1)
+        test_loss = loss_func(node_feats, test_label)
+        correct_test = (pred == test_label).sum().cpu().item()
+        
+        print(correct_num/config.train_num, correct_test/config.test_num, loss_epoch/batch_num, test_loss.item())
+        with open('./log/' + run_time +'.log', 'a') as f:
+            f.write(str(correct_num/config.train_num) + ',' + 
+                    str(correct_test/config.test_num) + ',' + 
+                    str(loss_epoch/batch_num) + ',' +
+                    str(test_loss.item()) + '\n')
             
-        print(correct_num/config.train_num, loss_epoch)
-        with open('./log/test3.log', 'a') as f:
-            f.write(str(correct_num/config.train_num) + ',' + str(loss_epoch) + '\n')
