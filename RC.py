@@ -573,7 +573,7 @@ class RC:
         return r, y, np.array(spike_train)
 
 import dgl
-from dgl.nn import EGATConv
+from dgl.nn import EGATConv, GraphConv
 import torch.nn.functional as F
 
 class EGAT(nn.Module):
@@ -609,6 +609,35 @@ class EGAT(nn.Module):
         out = self.fc(node_sum_vec)
         # 
         return out
+        
+class EGCN(nn.Module):
+    '''
+    Graph convolution network using edge weights
+    '''
+    def __init__(self, config:Config) -> None:
+        super(EGCN, self).__init__()
+        self.config = config
+        self.gconv1 = GraphConv(in_feats=config.frames, 
+                                out_feats=config.egat_hid, 
+                                norm='none', 
+                                weight=True, 
+                                bias=True,
+                                activation=nn.ReLU(),)
+        self.gconv2 = GraphConv(in_feats=config.egat_hid, 
+                                out_feats=config.egat_out, 
+                                norm='none', 
+                                weight=True, 
+                                bias=True,
+                                activation=nn.ReLU(),)
+        self.fc = nn.Linear(config.egat_out, config.N_out)
+    def forward(self, g, node_feats):
+        h = self.gconv1(g, node_feats) # h.shape [nodes, feats]
+        h = self.gconv2(g, h)
+        # h = h.mean(0) # average on node dim
+        g.ndata['h'] = h.view(self.config.N_hid, -1)
+        node_sum_vec = dgl.mean_nodes(g, 'h')
+        # print(node_sum_vec.shape)
+        out = self.fc(node_sum_vec)
         
 class ConvNet(nn.Module):
     def __init__(self, config:Config):

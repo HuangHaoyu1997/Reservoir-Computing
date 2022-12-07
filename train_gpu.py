@@ -330,6 +330,7 @@ if __name__ == '__main__':
         correct_num = 0
         loss_epoch = 0
         iter = 0
+        
         for i in range(config.train_num):
             v = train_rs[i][1:, :].T
             node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
