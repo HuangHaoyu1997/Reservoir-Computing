@@ -296,7 +296,7 @@ if __name__ == '__main__':
     # param_search(run_time)
     from config import Config
     from data import part_DATA
-    from RC import torchRC, EGAT
+    from RC import torchRC, EGAT, EGCN
     import dgl
 
     config = Config()
@@ -311,6 +311,7 @@ if __name__ == '__main__':
     train_rs, train_label = inference_new(model, config, train_loader,)
     test_rs, test_label = inference_new(model, config, test_loader,)
     Egat = EGAT(config).to(config.device)
+    Egcn = EGCN(config).to(config.device)
     
     A = model.reservoir.A.cpu().numpy()
     edge_index = torch.tensor(np.where(A!=0), dtype=torch.long)
@@ -320,8 +321,8 @@ if __name__ == '__main__':
     g = dgl.graph((u, v)).to(config.device)
     
     loss_func = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(Egat.parameters(), lr=config.lr_egat)
-    
+    # optimizer = torch.optim.Adam(Egat.parameters(), lr=config.lr_egat)
+    optimizer = torch.optim.Adam(Egcn.parameters(), lr=config.lr_egat)
     batch_size = 100
     batch_num = int(config.train_num/batch_size)
     for e in range(config.epoch_egat): # 1000 epoch
@@ -330,15 +331,22 @@ if __name__ == '__main__':
         correct_num = 0
         loss_epoch = 0
         iter = 0
-        
-        for i in range(config.train_num):
+        shuffle_list = np.arange(0, config.train_num)
+        random.shuffle(shuffle_list)
+        label = None
+        for i in shuffle_list:
+            
             v = train_rs[i][1:, :].T
-            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
+            if label is None:
+                label = train_label[i].view(1,-1)
+            else:
+                label = torch.cat((label, train_label[i].view(1,-1)), dim=1).view(1,-1)
+            # node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
+            node_feat = Egcn(g, v[0:config.N_hid]) # using spiking trains
             if node_feats is None:
                 node_feats = node_feat.view(1, -1)
             else:
                 node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
-            
             if node_feats.shape[0] % batch_size == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
                 optimizer.zero_grad()
                 pred = node_feats.argmax(1)

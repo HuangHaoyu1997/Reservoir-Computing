@@ -622,23 +622,24 @@ class EGCN(nn.Module):
                                 norm='none', 
                                 weight=True, 
                                 bias=True,
-                                activation=nn.ReLU(),)
+                                activation=nn.Sigmoid())
         self.gconv2 = GraphConv(in_feats=config.egat_hid, 
                                 out_feats=config.egat_out, 
                                 norm='none', 
                                 weight=True, 
                                 bias=True,
-                                activation=nn.ReLU(),)
+                                activation=nn.ReLU()) # nn.Softmax()
         self.fc = nn.Linear(config.egat_out, config.N_out)
+    
     def forward(self, g, node_feats):
         h = self.gconv1(g, node_feats) # h.shape [nodes, feats]
         h = self.gconv2(g, h)
-        # h = h.mean(0) # average on node dim
-        g.ndata['h'] = h.view(self.config.N_hid, -1)
+        g.ndata['h'] = h
         node_sum_vec = dgl.mean_nodes(g, 'h')
         # print(node_sum_vec.shape)
         out = self.fc(node_sum_vec)
-        
+        return out
+
 class ConvNet(nn.Module):
     def __init__(self, config:Config):
         super(ConvNet, self).__init__()

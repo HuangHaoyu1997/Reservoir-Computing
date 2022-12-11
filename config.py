@@ -16,7 +16,7 @@ class Config:
         N_in = 32*32
         N_out = 10
     elif data == 'mnist':
-        train_num = 5000
+        train_num = 1000
         test_num = 1000
         N_in = 28*28
         N_out = 10
