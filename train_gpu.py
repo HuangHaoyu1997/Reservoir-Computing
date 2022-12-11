@@ -358,6 +358,7 @@ if __name__ == '__main__':
                 loss_epoch += loss.item()
                 iter += 1
         
+        
         # testing loop
         node_feats = None
         for i in range(config.test_num):
