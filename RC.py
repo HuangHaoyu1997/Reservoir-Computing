@@ -631,9 +631,9 @@ class EGCN(nn.Module):
                                 activation=nn.ReLU()) # nn.Softmax()
         self.fc = nn.Linear(config.egat_out, config.N_out)
     
-    def forward(self, g, node_feats):
-        h = self.gconv1(g, node_feats) # h.shape [nodes, feats]
-        h = self.gconv2(g, h)
+    def forward(self, g, node_feats, edge_w):
+        h = self.gconv1(g, node_feats, edge_weight=edge_w) # h.shape [nodes, feats]
+        h = self.gconv2(g, h, edge_weight=edge_w)
         g.ndata['h'] = h
         node_sum_vec = dgl.mean_nodes(g, 'h')
         # print(node_sum_vec.shape)

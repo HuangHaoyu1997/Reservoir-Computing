@@ -32,7 +32,7 @@ class Config:
     epoch = 100                                     # training epoch for readout layer mlp
     epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
-    lr_egat = 0.001    # learning rate for mlp
+    lr_egat = 1e-4    # learning rate for mlp
     device = 'cuda:0'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
