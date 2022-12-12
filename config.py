@@ -33,7 +33,7 @@ class Config:
     epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
     lr_egat = 1e-4    # learning rate for mlp
-    device = 'cuda:1'                                 # 'cpu', 'cuda'
+    device = 'cpu'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
     Win = 1.0         # strength of input linear weights, unif(-Win, Win)

@@ -35,7 +35,7 @@ def inference_new(model:torchRC, config:Config, data_loader,):
     labels = []
     spikes = None
     for i, (image, label) in enumerate(data_loader):
-        print('batch', i)
+        # print('batch', i)
         batch = image.shape[0]
         x_enc = None
         for _ in range(frames):
@@ -46,11 +46,12 @@ def inference_new(model:torchRC, config:Config, data_loader,):
         mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
         # concat membrane and spike train as representation
         concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
-        print(concat.shape)
+        # print(concat.shape)
         if spikes is None: spikes = concat # spikes = spike_sum
         else: spikes = torch.cat((spikes, concat), dim=0)
         labels.extend(label.numpy().tolist())
     # print('Time elasped:', time.time() - start_time)
+    print('finish inference')
     return spikes.detach(), torch.tensor(labels).to(device)
     
     
@@ -323,57 +324,55 @@ if __name__ == '__main__':
     loss_func = torch.nn.CrossEntropyLoss()
     # optimizer = torch.optim.Adam(Egat.parameters(), lr=config.lr_egat)
     optimizer = torch.optim.Adam(Egcn.parameters(), lr=config.lr_egat)
-    batch_size = 100
+    batch_size = 20
     batch_num = int(config.train_num/batch_size)
     for e in range(config.epoch_egat): # 1000 epoch
+        ###############
         # training loop
-        node_feats = None
+        ###############
         correct_num = 0
         loss_epoch = 0
-        iter = 0
         shuffle_list = np.arange(0, config.train_num)
         random.shuffle(shuffle_list)
-        label = None
-        for i in shuffle_list:
-        # for i in range(config.train_num):
-            v = train_rs[i][1:, :].T
-            if label is None:
-                label = train_label[i].view(1,-1)
-            else:
-                label = torch.cat((label, train_label[i].view(1,-1)), dim=1).view(1,-1)
+        for i in range(batch_num):
             
+            ######################
+            # preparing batch data
+            ######################
+            index = shuffle_list[i*batch_size:(i+1)*batch_size]
+            # v = train_rs[index][:,1:,config.N_hid:] # using spiking trains
+            v = train_rs[index][:,1:,0:config.N_hid] # using membrane potential
+            batch_v = v.transpose(1,2).reshape(-1, config.frames)
+            batch_g = dgl.batch([g]*batch_size)
+            batch_edge_attr = torch.cat(([edge_attr]*batch_size))
+            batch_label = train_label[index].view(1,-1)
+            
+            ######################
+            # inference
+            ######################
             # node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
-            # node_feat = Egcn(g, v[0:config.N_hid], edge_attr) # using membrane potential
-            node_feat = Egcn(g, v[config.N_hid:], edge_attr) # using spiking trains
+            node_feat = Egcn(batch_g, batch_v, batch_edge_attr)
+            optimizer.zero_grad()
+            pred = node_feat.argmax(1)
+            loss = loss_func(node_feat, batch_label[0]) # train_label[iter*batch_size:(iter+1)*batch_size]
+            loss.backward() 
+            optimizer.step()
             
-            if node_feats is None:
-                node_feats = node_feat.view(1, -1)
-            else:
-                node_feats = torch.concat((node_feats, node_feat.view(1, -1)), dim=0)
-            if node_feats.shape[0] % batch_size == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
-                optimizer.zero_grad()
-                pred = node_feats.argmax(1)
-                # print(label.shape)
-                loss = loss_func(node_feats, label[0]) # train_label[iter*batch_size:(iter+1)*batch_size]
-                loss.backward() 
-                optimizer.step()
-                
-                correct_num += (pred == label[0]).sum().cpu().item() # train_label[iter*batch_size:(iter+1)*batch_size]
-                loss_epoch += loss.item()
-                node_feats = None
-                label = None
-                iter += 1
+            correct_num += (pred == batch_label[0]).sum().cpu().item() # train_label[iter*batch_size:(iter+1)*batch_size]
+            loss_epoch += loss.item()
+            
         
         
-        
+        ##############
         # testing loop
+        ##############
         node_feats = None
         for i in range(config.test_num):
             v = test_rs[i][1:, :].T
             
             # node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
-            # node_feat = Egcn(g, v[0:config.N_hid], edge_attr) # using membrane potential
-            node_feat = Egcn(g, v[config.N_hid:], edge_attr) # using spiking trains
+            node_feat = Egcn(g, v[0:config.N_hid], edge_attr) # using membrane potential
+            # node_feat = Egcn(g, v[config.N_hid:], edge_attr) # using spiking trains
             
             if node_feats is None:
                 node_feats = node_feat.view(1, -1)
