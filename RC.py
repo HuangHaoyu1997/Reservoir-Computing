@@ -113,44 +113,6 @@ class AnnRC(nn.Module):
             
         return r
     
-    def reset(self, config:Config):
-        '''
-        random initialization:
-        W_in:      input weight matrix
-        A:         reservoir weight matrix
-        W_out:     readout weight matrix
-        r_history: state of reservoir neurons
-        mem:       membrane potential of reservoir neurons
-        
-        '''
-        assert len(config.type) == config.layer
-        W_ins, As, Bias = [], [], []
-        for i in range(config.layer):
-            if i == 0: # first layer, input dim -> hidden dim
-                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
-                W_in = torchUniform(-0.1, 0.1, size=(self.N_in, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
-            else:      # second layer, hidden dim -> hidden dim
-                # W_in = nn.Parameter(torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid))).to(self.device) # unif(-0.1, 0.1)
-                W_in = torchUniform(-0.1, 0.1, size=(self.N_hid, self.N_hid)).to(self.device) # unif(-0.1, 0.1)
-            # A = nn.Parameter(torch.tensor(A_cluster(self.N_hid,
-            #                                         config.p_in,
-            #                                         config.gamma,
-            #                                         config.binary,
-            #                                         config.type[i],
-            #                                         config.noise,
-            #                                         config.noise_str,
-            #                                         config,
-            #                                         ))).to(self.device)
-            A = torch.tensor(A_cluster(self.N_hid, config.p_in, config.gamma, config.binary, config.type[i], config.noise,
-                                       config.noise_str,config,)).to(self.device)
-            
-            # bias = nn.Parameter(torchUniform(-1, 1, size=(self.N_hid))).to(self.device) # unif(-1,1)
-            bias = torchUniform(-1, 1, size=(self.N_hid)).to(self.device) # unif(-1,1)
-            
-            W_ins.append(W_in)
-            As.append(A)
-            Bias.append(bias)
-            
         # if self.decay is not a non-negative real number, initialize it to random vector
         if not self.decay:
             self.decay = torchUniform(low=0.2, high=1.0, size=(1, self.N_hid)).to(self.device)

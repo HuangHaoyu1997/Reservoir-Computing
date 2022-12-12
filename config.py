@@ -32,8 +32,8 @@ class Config:
     epoch = 100                                     # training epoch for readout layer mlp
     epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
-    lr_egat = 1e-4    # learning rate for mlp
-    device = 'cpu'                                 # 'cpu', 'cuda'
+    lr_egat = 1e-3    # learning rate for mlp
+    device = 'cuda:1'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
     Win = 1.0         # strength of input linear weights, unif(-Win, Win)
@@ -49,7 +49,7 @@ class Config:
     
     # topology settings
     binary = False    # binary matrix of reservoir A
-    net_type = 'WSC'  # type of reservoir connection topology
+    net_type = 'BAC'  # type of reservoir connection topology
                       # 'ER',  # Erdos-Renyi Random Network
                       # 'ERC', # Clusters of Erdos-Renyi Networks
                       # 'BA',  # Barabasi-Albert Network
