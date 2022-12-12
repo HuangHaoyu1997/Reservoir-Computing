@@ -622,13 +622,21 @@ class EGCN(nn.Module):
                                 norm='none', 
                                 weight=True, 
                                 bias=True,
-                                activation=nn.Sigmoid())
+                                activation=nn.ReLU())
         self.gconv2 = GraphConv(in_feats=config.egat_hid, 
                                 out_feats=config.egat_out, 
                                 norm='none', 
                                 weight=True, 
                                 bias=True,
                                 activation=nn.ReLU()) # nn.Softmax()
+        
+        self.gconv3 = GraphConv(in_feats=config.egat_hid, 
+                                out_feats=config.egat_out, 
+                                norm='none', 
+                                weight=True, 
+                                bias=True,
+                                activation=nn.ReLU()) # nn.Softmax()
+        
         self.fc = nn.Linear(config.egat_out, config.N_out)
     
     def forward(self, g, node_feats, edge_w):

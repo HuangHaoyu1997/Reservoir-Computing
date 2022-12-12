@@ -335,14 +335,17 @@ if __name__ == '__main__':
         random.shuffle(shuffle_list)
         label = None
         for i in shuffle_list:
-            
+        # for i in range(config.train_num):
             v = train_rs[i][1:, :].T
             if label is None:
                 label = train_label[i].view(1,-1)
             else:
                 label = torch.cat((label, train_label[i].view(1,-1)), dim=1).view(1,-1)
+            
             # node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1)) # 只用膜电位变化的时间信息 
-            node_feat = Egcn(g, v[0:config.N_hid]) # using spiking trains
+            # node_feat = Egcn(g, v[0:config.N_hid], edge_attr) # using membrane potential
+            node_feat = Egcn(g, v[config.N_hid:], edge_attr) # using spiking trains
+            
             if node_feats is None:
                 node_feats = node_feat.view(1, -1)
             else:
@@ -350,12 +353,15 @@ if __name__ == '__main__':
             if node_feats.shape[0] % batch_size == 0: # 10 iteration for 1 epoch, 1 iteration 100 samples
                 optimizer.zero_grad()
                 pred = node_feats.argmax(1)
-                loss = loss_func(node_feats, train_label[iter*batch_size:(iter+1)*batch_size])
-                loss.backward()
+                # print(label.shape)
+                loss = loss_func(node_feats, label[0]) # train_label[iter*batch_size:(iter+1)*batch_size]
+                loss.backward() 
                 optimizer.step()
-                node_feats = None
-                correct_num += (pred == train_label[iter*batch_size:(iter+1)*batch_size]).sum().cpu().item()
+                
+                correct_num += (pred == label[0]).sum().cpu().item() # train_label[iter*batch_size:(iter+1)*batch_size]
                 loss_epoch += loss.item()
+                node_feats = None
+                label = None
                 iter += 1
         
         
@@ -364,7 +370,11 @@ if __name__ == '__main__':
         node_feats = None
         for i in range(config.test_num):
             v = test_rs[i][1:, :].T
-            node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
+            
+            # node_feat = Egat(g, v[0:config.N_hid], edge_attr.view(-1,1))
+            # node_feat = Egcn(g, v[0:config.N_hid], edge_attr) # using membrane potential
+            node_feat = Egcn(g, v[config.N_hid:], edge_attr) # using spiking trains
+            
             if node_feats is None:
                 node_feats = node_feat.view(1, -1)
             else:

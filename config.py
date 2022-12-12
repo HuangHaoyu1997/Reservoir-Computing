@@ -16,7 +16,7 @@ class Config:
         N_in = 32*32
         N_out = 10
     elif data == 'mnist':
-        train_num = 1000
+        train_num = 5000
         test_num = 1000
         N_in = 28*28
         N_out = 10
@@ -25,21 +25,21 @@ class Config:
     episode_len = 50   # episode length when attacking reservoir model
     mlp_hid = 32
     
-    egat_hid = 32     # hidden node feature dim of Edge GAT layer
-    egat_out = 16     # output node feature dim of Edge GAT layer
+    egat_hid = 64     # hidden node feature dim of Edge GAT layer
+    egat_out = 32     # output node feature dim of Edge GAT layer
     egat_heads = 3    # multi-head attention
     
     epoch = 100                                     # training epoch for readout layer mlp
     epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
     lr_egat = 1e-4    # learning rate for mlp
-    device = 'cuda:0'                                 # 'cpu', 'cuda'
+    device = 'cuda:1'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
     Win = 1.0         # strength of input linear weights, unif(-Win, Win)
     bias = 1          # bias distribution in reservoir layers
     mem_init = 0.1   # initial membrane potential distribution
-    N_hid = 200                                     # hidden dim / number of reservoir neuron
+    N_hid = 1000                                     # hidden dim / number of reservoir neuron
     alpha = 0.8                                     # memory factor
     
     p_in = 0.2        # ratio of inhibitory neurons

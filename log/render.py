@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('2022.12.05-01-33-25.log', 'r') as f:
+file_name = '2022.12.12-03-59-16.log'# '2022.12.12-04-24-00.log' # '2022.12.12-04-14-24.log' # 
+
+with open(file_name, 'r') as f:
     log = f.readlines()
 
 train_acc, test_acc, train_loss, test_loss = [], [], [], []
@@ -12,6 +14,8 @@ for i in log:
     test_acc.append(float(i.split(',')[1]))
     train_loss.append(float(i.split(',')[2]))
     test_loss.append(float(i.split(',')[3]))
+
+plt.figure(figsize=(12, 5))
 plt.subplot(121)
 plt.plot(train_acc)
 plt.plot(test_acc)
@@ -23,4 +27,7 @@ plt.plot(train_loss)
 plt.plot(test_loss)
 # plt.axis([-5, 505, -0.05, 3])
 plt.grid()
+
+
 plt.show()
+plt.savefig(file_name+'.png')
