@@ -630,8 +630,8 @@ class EGCN(nn.Module):
                                 bias=True,
                                 activation=nn.ReLU()) # nn.Softmax()
         
-        self.gconv3 = GraphConv(in_feats=config.egat_hid, 
-                                out_feats=config.egat_out, 
+        self.gconv_single = GraphConv(in_feats=config.frames, 
+                                out_feats=config.N_out, 
                                 norm='none', 
                                 weight=True, 
                                 bias=True,
@@ -640,13 +640,15 @@ class EGCN(nn.Module):
         self.fc = nn.Linear(config.egat_out, config.N_out)
     
     def forward(self, g, node_feats, edge_w):
-        h = self.gconv1(g, node_feats, edge_weight=edge_w) # h.shape [nodes, feats]
-        h = self.gconv2(g, h, edge_weight=edge_w)
+        # h = self.gconv1(g, node_feats, edge_weight=edge_w) # h.shape [nodes, feats]
+        # h = self.gconv2(g, h, edge_weight=edge_w)
+        h = self.gconv_single(g, node_feats, edge_weight=edge_w)
         g.ndata['h'] = h
         node_sum_vec = dgl.mean_nodes(g, 'h')
+        return node_sum_vec
         # print(node_sum_vec.shape)
-        out = self.fc(node_sum_vec)
-        return out
+        # out = self.fc(node_sum_vec)
+        # return out
 
 class ConvNet(nn.Module):
     def __init__(self, config:Config):
