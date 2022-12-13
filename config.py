@@ -29,7 +29,7 @@ class Config:
     egat_out = 32     # output node feature dim of Edge GAT layer
     egat_heads = 3    # multi-head attention
     
-    epoch = 100                                     # training epoch for readout layer mlp
+    epoch = 300                                     # training epoch for readout layer mlp
     epoch_egat = 3000 # epoch for EGAT training
     lr = 5e-5                                       # learning rate for mlp
     lr_egat = 1e-3    # learning rate for mlp

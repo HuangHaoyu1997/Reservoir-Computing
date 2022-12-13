@@ -311,6 +311,15 @@ if __name__ == '__main__':
     model = torchRC(config).to(config.device)
     train_rs, train_label = inference_new(model, config, train_loader,)
     test_rs, test_label = inference_new(model, config, test_loader,)
+    
+    mlp = MLP(2*config.N_hid, config.mlp_hid, config.N_out).to(model.device)
+    train_score, test_score, = train_mlp_readout(model=mlp, 
+                                                config=config,
+                                                X_train=train_rs,
+                                                X_test=test_rs,
+                                                y_train=train_label,
+                                                y_test=test_label)
+    '''
     Egat = EGAT(config).to(config.device)
     Egcn = EGCN(config).to(config.device)
     
@@ -389,3 +398,6 @@ if __name__ == '__main__':
                     str(loss_epoch/batch_num) + ',' +
                     str(test_loss.item()) + '\n')
             
+    '''
+    
+    
