@@ -31,6 +31,7 @@ class Config:
     mlp_hid = 32
     epoch = 300                                     # training epoch for readout layer mlp
     lr = 5e-5                                       # learning rate for mlp
+    batch_size = 50                                # batch size for inference and training
     
     ##############################
     # transformer model parameters
@@ -53,7 +54,7 @@ class Config:
     
     
     device = 'cuda:1'                                 # 'cpu', 'cuda'
-    batch_size = 50                                # batch size for inference and training
+    
 
     Win = 1.0         # strength of input linear weights, unif(-Win, Win)
     bias = 1          # bias distribution in reservoir layers

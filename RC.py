@@ -652,6 +652,29 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return x
 
+class Transformer(nn.Module):
+    '''
+    transformer encoder for reservoir readout layer
+    '''
+    def __init__(self, config:Config) -> None:
+        super(Transformer, self).__init__()
+        encoder_layer = nn.TransformerEncoderLayer(d_model=config.d_model, 
+                                                   nhead=config.n_heads,
+                                                   dim_feedforward=config.d_ff,)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=config.encoder_layer)
+        self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
+        self.fc = nn.Linear(config.N_hid, config.d_model)
+    
+    def forward(self, x):
+        '''
+        input x shape = [batch, channel, N_hid]
+        channel = config.frames
+        '''
+        x = self.fc(x)                  # out shape [batch, channel, d_model]
+        x = self.transformer_encoder(x) # out shape [batch, channel, d_model]
+        x = self.avgpool(x)             # out shape [batch, channel, 1]
+        x = torch.flatten(x, 1)         # out shape [batch, channel]
+        return x
 
 class RCagent:
     def __init__(self) -> None:

@@ -9,7 +9,7 @@ import torch
 import random
 import pickle
 import numpy as np
-from RC import MLP, torchRC
+from RC import MLP, torchRC, Transformer
 from config import Config
 from utils import encoding
 from data import PoissonDataset, part_DATA
@@ -35,7 +35,6 @@ def inference_new(model:torchRC, config:Config, data_loader,):
     labels = []
     spikes = None
     for i, (image, label) in enumerate(data_loader):
-        # print('batch', i)
         batch = image.shape[0]
         x_enc = None
         for _ in range(frames):
@@ -44,9 +43,8 @@ def inference_new(model:torchRC, config:Config, data_loader,):
             else: x_enc = torch.cat((x_enc, spike), dim=1)
         x_enc = x_enc.view(batch, frames, N_in) # [batch, frames, N_in]
         mems, spike = model(x_enc.to(device)) # [batch, frames, N_hid], [batch, frames, N_hid]
-        # concat membrane and spike train as representation
+        # concat membrane and spike train
         concat = torch.cat((mems, spike), dim=-1) # [batch, frames, 2*N_hid]
-        # print(concat.shape)
         if spikes is None: spikes = concat # spikes = spike_sum
         else: spikes = torch.cat((spikes, concat), dim=0)
         labels.extend(label.numpy().tolist())
@@ -101,7 +99,58 @@ def train_egat(model:EGAT,
     train the EGAT from reservoir computing model output series
     '''
     pass
-    
+
+def train_transformer_readout(model:Transformer,
+                              config:Config,
+                              X_train,
+                              X_test,
+                              y_train,
+                              y_test,):
+    train_num = X_train.shape[0]
+    test_num = X_test.shape[0]
+    iteration = int(train_num/config.batch_size)
+    iter = int(test_num/config.batch_size)
+    cost = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
+
+    train_loss, test_loss, train_acc, test_acc = [], [], [], []
+    for epoch in range(config.epoch) :
+        model.train()
+        sum_loss = 0
+        train_correct = 0
+        for i in range(iteration):
+            x = X_train[i*config.batch_size:(i+1)*config.batch_size] # [batch, config.frames, config.N_hid]
+            y = y_train[i*config.batch_size:(i+1)*config.batch_size]
+            out = model(x)
+
+            optimizer.zero_grad()
+            loss = cost(out, y)
+            loss.backward()
+            optimizer.step()
+
+            _, id = torch.max(out.data, 1)
+            sum_loss += loss.data
+            train_correct+=torch.sum(id==y.data)
+        
+        model.eval()
+        test_correct = 0
+        for i in range(iter):
+            x = X_test[i*config.batch_size:(i+1)*config.batch_size]
+            y = y_test[i*config.batch_size:(i+1)*config.batch_size]
+            out = model(x)
+            loss = cost(out, y)
+            _, id = torch.max(out.data, 1)
+            test_correct += torch.sum(id == y.data)
+            
+        train_loss.append(sum_loss.cpu()/iteration)
+        test_loss.append(loss.cpu()/iter)
+        train_acc.append(train_correct.cpu()/train_num)
+        test_acc.append(test_correct.cpu()/test_num)
+        if config.verbose:
+            print('[%d,%d] loss:%.03f, loss:%.03f, train acc:%.4f, test acc:%.4f' 
+                % (epoch+1, config.epoch, sum_loss/iteration, loss.item()/iter, train_correct/train_num, test_correct/test_num))
+    return train_loss, test_loss, train_acc, test_acc
+
 def train_mlp_readout(model:MLP,
                       config:Config,
                       X_train,
