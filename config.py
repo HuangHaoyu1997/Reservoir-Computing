@@ -23,16 +23,35 @@ class Config:
     
     frames = 30       # static img to event-based frames
     episode_len = 50   # episode length when attacking reservoir model
-    mlp_hid = 32
     
+    
+    ##############################
+    # MLP parameters
+    ##############################
+    mlp_hid = 32
+    epoch = 300                                     # training epoch for readout layer mlp
+    lr = 5e-5                                       # learning rate for mlp
+    
+    ##############################
+    # transformer model parameters
+    ##############################
+    d_model = 32
+    encoder_layer = 2
+    n_heads = 4
+    assert d_model % n_heads == 0
+    d_ff = 64 # dim for feedforward linear layer
+    
+    ##############################
+    # GNN model parameters
+    ##############################
     egat_hid = 64     # hidden node feature dim of Edge GAT layer
     egat_out = 32     # output node feature dim of Edge GAT layer
     egat_heads = 3    # multi-head attention
-    
-    epoch = 300                                     # training epoch for readout layer mlp
     epoch_egat = 3000 # epoch for EGAT training
-    lr = 5e-5                                       # learning rate for mlp
     lr_egat = 1e-3    # learning rate for mlp
+    
+    
+    
     device = 'cuda:1'                                 # 'cpu', 'cuda'
     batch_size = 50                                # batch size for inference and training
 
