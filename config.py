@@ -24,7 +24,6 @@ class Config:
     frames = 30       # static img to event-based frames
     episode_len = 50   # episode length when attacking reservoir model
     
-    
     ##############################
     # MLP parameters
     ##############################

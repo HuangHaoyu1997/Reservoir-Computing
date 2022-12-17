@@ -153,16 +153,16 @@ def part_DATA(config:Config):
     '''
     if config.data == 'cifar10':
         transform = transforms.Compose([
-            transforms.Grayscale(),
+            # transforms.Grayscale(),
             transforms.ToTensor(), # convert to tensor and rascale to [0,1]
             ])
         train_dataset = torchvision.datasets.CIFAR10(root='./data/',
                                                     train=True,
-                                                    download=False,
+                                                    download=True,
                                                     transform=transform)
         test_dataset = torchvision.datasets.CIFAR10(root='./data/',
                                                     train=False,
-                                                    download=False,
+                                                    download=True,
                                                     transform=transform)
     elif config.data == 'mnist':
         transform = transforms.Compose([

@@ -613,26 +613,45 @@ class EGCN(nn.Module):
         # return out
 
 class ConvNet(nn.Module):
-    def __init__(self, config:Config):
+    def __init__(self, input_size, config:Config):
         super(ConvNet, self).__init__()
+        
         self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=2),
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2))
         self.layer2 = nn.Sequential(
-            nn.Conv2d(16, 32, kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2))
-        self.fc = nn.Linear(7*7*32, config.N_hid)
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.dim = self.fc_dim(input_size)
+        self.fc = nn.Linear(self.dim, config.N_hid)
+    
+    def fc_dim(self, input_size):
+        x = self.layer1(torch.rand(input_size))
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.avgpool(x)
+        return x.shape[1] * x.shape[2] * x.shape[3]
     
     def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = out.reshape(out.size(0), -1)
-        out = self.fc(out)
-        return out
+        x = self.layer1(x)
+        # print('cnn',x.dtype)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.avgpool(x)
+        x = self.fc(x.view(-1, self.dim))
+        # out = out.reshape(out.size(0), -1)
+        # out = self.fc(out)
+        return x
 
 class MLP(nn.Module):
     def __init__(self,

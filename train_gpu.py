@@ -101,6 +101,7 @@ def train_egat(model:EGAT,
     pass
 
 def train_transformer_readout(model:Transformer,
+                              run_time:str,
                               config:Config,
                               X_train,
                               X_test,
@@ -133,13 +134,15 @@ def train_transformer_readout(model:Transformer,
             train_correct+=torch.sum(id==y.data)
         
         model.eval()
+        sum_test_loss = 0
         test_correct = 0
         for i in range(iter):
             x = X_test[i*config.batch_size:(i+1)*config.batch_size]
             y = y_test[i*config.batch_size:(i+1)*config.batch_size]
-            out = model(x)
-            loss = cost(out, y)
-            _, id = torch.max(out.data, 1)
+            outs = model(x)
+            loss = cost(outs, y)
+            sum_test_loss += loss.item()
+            _, id = torch.max(outs.data, 1)
             test_correct += torch.sum(id == y.data)
             
         train_loss.append(sum_loss.cpu()/iteration)
@@ -148,7 +151,13 @@ def train_transformer_readout(model:Transformer,
         test_acc.append(test_correct.cpu()/test_num)
         if config.verbose:
             print('[%d,%d] loss:%.03f, loss:%.03f, train acc:%.4f, test acc:%.4f' 
-                % (epoch+1, config.epoch, sum_loss/iteration, loss.item()/iter, train_correct/train_num, test_correct/test_num))
+                % (epoch+1, config.epoch, sum_loss/iteration, sum_test_loss/iter, train_correct/train_num, test_correct/test_num))
+        
+        with open('./log/' + run_time +'.log', 'a') as f:
+            f.write(str(sum_loss.cpu().item()/iteration) + ',' + 
+                    str(sum_test_loss/iter) + ',' + 
+                    str(train_correct.cpu().item()/train_num) + ',' +
+                    str(test_correct.cpu().item()/test_num) + '\n')
     return train_loss, test_loss, train_acc, test_acc
 
 def train_mlp_readout(model:MLP,
@@ -343,6 +352,9 @@ if __name__ == '__main__':
 
     
     run_time = time.strftime("%Y.%m.%d-%H-%M-%S", time.localtime())
+    task_name = 'SRC_Trans_'
+    run_time = task_name + run_time
+    
     # param_search(run_time)
     from config import Config
     from data import part_DATA
@@ -350,10 +362,12 @@ if __name__ == '__main__':
     import dgl
 
     config = Config()
+    config.device = 'cuda:0'
     config.data = 'mnist'
-    config.train_num = 1000
-    config.test_num = 1000
+    config.train_num = 20000
+    config.test_num = 10000
     config.N_in = 28*28
+    config.N_hid = 200
     config.N_out = 10
     train_loader, test_loader = part_DATA(config)
 
@@ -361,13 +375,39 @@ if __name__ == '__main__':
     train_rs, train_label = inference_new(model, config, train_loader,)
     test_rs, test_label = inference_new(model, config, test_loader,)
     
+    config.d_model = 64
+    config.encoder_layer = 2 # 增加encoder层数能略微增加性能
+    config.n_heads = 8 # d_model不变，增加n_head能略微增加性能，貌似比encoder_layer管用
+    config.d_ff = 64
+
+    config.lr = 1e-4
+    config.epoch = 500
+    config.batch_size = 50
+
+    model = Transformer(config).to(config.device)
+    print('model parameter:', sum(p.numel() for p in model.parameters() if p.requires_grad))
+    train_l, test_l, train_a, test_a = train_transformer_readout(model,
+                                                                 run_time,
+                                                                 config, 
+                                                                 train_rs[:,1:,0:config.N_hid], 
+                                                                 test_rs[:,1:,0:config.N_hid], 
+                                                                 train_label, 
+                                                                 test_label)
+    
+    '''
+    
+    '''
+    
+    '''
     mlp = MLP(2*config.N_hid, config.mlp_hid, config.N_out).to(model.device)
     train_score, test_score, = train_mlp_readout(model=mlp, 
                                                 config=config,
-                                                X_train=train_rs,
-                                                X_test=test_rs,
+                                                X_train=train_rs.mean(1),
+                                                X_test=test_rs.mean(1),
                                                 y_train=train_label,
                                                 y_test=test_label)
+    '''
+    
     '''
     Egat = EGAT(config).to(config.device)
     Egcn = EGCN(config).to(config.device)
