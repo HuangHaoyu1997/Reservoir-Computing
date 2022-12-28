@@ -59,7 +59,7 @@ class Config:
     bias = 1          # bias distribution in reservoir layers
     mem_init = 0.1   # initial membrane potential distribution
     N_hid = 1000                                     # hidden dim / number of reservoir neuron
-    alpha = 0.8                                     # memory factor
+    alpha = 0.5                                     # memory factor
     
     p_in = 0.2        # ratio of inhibitory neurons
     gamma = 1.0       # shape factor of gamma distribution
