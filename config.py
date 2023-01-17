@@ -24,6 +24,30 @@ class Config:
     frames = 30       # static img to event-based frames
     episode_len = 50   # episode length when attacking reservoir model
     
+    
+    ##############################
+    # Cfc parameters
+    ##############################
+    epochs = 57
+    class_weight = 11.69
+    clipnorm = 0
+    hidden_size = 256
+    base_lr = 0.002
+    decay_lr = 0.9
+    backbone_activation = "silu"
+    backbone_units = 64
+    backbone_dr = 0.2
+    backbone_layers = 2
+    weight_decay = 4e-6
+    optim = "adamw"
+    init = 0.5
+    batch_size = 128
+    use_mixed = False
+    no_gate = False
+    minimal = True
+    use_ltc = False
+    
+    
     ##############################
     # MLP parameters
     ##############################

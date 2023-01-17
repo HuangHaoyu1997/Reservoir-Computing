@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-file_name = '2022.12.12-03-59-16.log'# '2022.12.12-04-24-00.log' # '2022.12.12-04-14-24.log' # 
+file_name = './log/2022.12.28-23-23-00.log'# '2022.12.12-04-24-00.log' # '2022.12.12-04-14-24.log' # 
 
 with open(file_name, 'r') as f:
     log = f.readlines()
@@ -10,10 +10,10 @@ train_acc, test_acc, train_loss, test_loss = [], [], [], []
 for i in log:
     # acc.append(float(i.split(',')[0][-6:]))
     # loss.append(float(i.split(',')[1].split('\') ')[1].split('\n')[0]))
-    train_acc.append(float(i.split(',')[0]))
-    test_acc.append(float(i.split(',')[1]))
-    train_loss.append(float(i.split(',')[2]))
-    test_loss.append(float(i.split(',')[3]))
+    train_acc.append(float(i.split(',')[3]))
+    test_acc.append(float(i.split(',')[4]))
+    train_loss.append(float(i.split(',')[1]))
+    test_loss.append(float(i.split(',')[2]))
 
 plt.figure(figsize=(12, 5))
 plt.subplot(121)
