@@ -195,8 +195,8 @@ if __name__ == '__main__':
     G = nx.from_numpy_matrix(A_before, create_using=nx.DiGraph)
     ecen = nx.degree_centrality(G)
     sorted_ecen = sorted(ecen.items(), key = lambda kv:(kv[1], kv[0]))
-    node_list = [i[0] for i in sorted_ecen[-10:]]
-    print(node_list)
+    node_list = [i[0] for i in sorted_ecen[-50:]]
+    print('nodes with top centrality:', node_list)
     
     cost = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=Config.lr)
@@ -218,11 +218,17 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
             train_loss += loss.cpu().item()
+            
+            
             with torch.no_grad():
+                # 只优化初始RC矩阵的非零元素,零元素始终不学习
                 model.ff_A.weight[index] = 0
+                
+                # 将关键节点的连边置0
                 for i in node_list:
                     model.ff_A.weight[i,:] = 0
                     model.ff_A.weight[:,i] = 0
+                    model.ff_in.weight[i] = 0.
             
             _, id = torch.max(out.data, 1)
             train_correct += torch.sum(id.cpu()==label.data)
@@ -231,6 +237,12 @@ if __name__ == '__main__':
         test_correct = 0
         with torch.no_grad():
             model.ff_A.weight[index] = 0
+            # 将关键节点的连边置0
+            for i in node_list:
+                model.ff_A.weight[i,:] = 0
+                model.ff_A.weight[:,i] = 0
+                # model.ff_in.weight[i] = 0.
+                
             for i, (img, label) in enumerate(test_loader):
                 batch = img.shape[0]
                 x_enc = None
@@ -256,3 +268,11 @@ if __name__ == '__main__':
     fcb_after = model.fc1.bias.cpu().detach().numpy()
     # plt.imshow(A_after_train)
     plt.imshow(fcw_before-fcw_after)
+    
+    plt.figure(figsize=(10,6))
+    plt.subplot(131)
+    plt.imshow(np.abs(A_before))
+    plt.subplot(132)
+    plt.imshow(np.abs(A_after))
+    plt.subplot(133)
+    plt.imshow(np.abs(A_after-A_before))
