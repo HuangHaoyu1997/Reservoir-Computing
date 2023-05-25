@@ -126,7 +126,8 @@ def BarabasiAlbert(N, m):
     return binary adjacency matrix
     '''
     H = nx.barabasi_albert_graph(N, m)
-    A = nx.to_numpy_matrix(H, dtype=np.float32)
+    # A = nx.to_numpy_matrix(H, dtype=np.float32)
+    A = nx.to_numpy_array(H, dtype=np.float32)
     return A
 
 def RandomNetwork(N_hid, R):
