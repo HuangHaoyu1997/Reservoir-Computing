@@ -13,3 +13,8 @@ data/cifar-10-batches-py/test_batch
 data/cifar-10-python.tar.gz
 *.docx
 *.pyc
+*.gz
+data/cifar-100-python/meta
+data/cifar-100-python/test
+data/cifar-100-python/train
+data/cifar-100-python/file.txt~
