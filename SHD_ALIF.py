@@ -1,68 +1,58 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-from torch.optim.lr_scheduler import StepLR
-import math
 import torch.nn.functional as F
-from torch.utils import data
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+from torch.optim.lr_scheduler import StepLR
 
+class config:
+    seed = 2
+    input = 700
+    hid = 128         # number of RC Neurons
+    output = 20
+    time_step = 250 # 250  # Number of steps to unroll
+    lr = 1e-2
+    b_j0 = 0.01  # neural threshold baseline
+    R_m = 1 # membrane resistance
+    dt = 1
+    batch = 256
+    gamma = 0.5  # gradient scale
+    gradient_type = 'MG' # 'G', 'slayer', 'linear' 窗型函数
+    scale = 6.        # special for 'MG'
+    hight = 0.15      # special for 'MG'
+    lens = 0.5  # hyper-parameters of approximate function
+    epoch = 100
+    dropout = 0
+    dropout_stepping = 0.005
+    dropout_stop = 0.90
+    device = torch.device('cuda')
 
+np.random.seed(config.seed)
+torch.manual_seed(config.seed)
+torch.cuda.manual_seed_all(config.seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
-torch.manual_seed(2)
-
-train_X = np.load('data/trainX_10ms.npy')
-train_y = np.load('data/trainY_10ms.npy').astype(np.float)
-
-test_X = np.load('data/testX_10ms.npy')
-test_y = np.load('data/testY_10ms.npy').astype(np.float)
+train_X = np.load('data/trainX_4ms.npy')
+train_y = np.load('data/trainY_4ms.npy').astype(np.float)
+test_X = np.load('data/testX_4ms.npy')
+test_y = np.load('data/testY_4ms.npy').astype(np.float)
 
 print('dataset shape: ', train_X.shape)
 print('dataset shape: ', test_X.shape)
 
-batch_size = 256
-
 tensor_trainX = torch.Tensor(train_X)  # transform to torch tensor
 tensor_trainY = torch.Tensor(train_y)
-train_dataset = data.TensorDataset(tensor_trainX, tensor_trainY)
-train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+train_dataset = torch.utils.data.TensorDataset(tensor_trainX, tensor_trainY)
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
 tensor_testX = torch.Tensor(test_X)  # transform to torch tensor
 tensor_testY = torch.Tensor(test_y)
-test_dataset = data.TensorDataset(tensor_testX, tensor_testY)
-test_loader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-'''
-STEP 2: MAKING DATASET ITERABLE
-'''
-
-decay = 0.1  # neuron decay rate
-thresh = 0.5  # neuronal threshold
-lens = 0.5  # hyper-parameters of approximate function
-num_epochs = 150  # n_iters / (len(train_dataset) / batch_size)
-num_epochs = int(num_epochs)
-
-'''
-STEP 3a: CREATE spike MODEL CLASS
-'''
-
-b_j0 = 0.01  # neural threshold baseline
-R_m = 1  # membrane resistance
-dt = 1  #
-gamma = .5  # gradient scale
-
-# define approximate firing function
-
-gradient_type = 'MG'
-print('gradient_type: ',gradient_type)
-scale = 6.
-hight = 0.15
-print('hight: ',hight,';scale: ',scale)
+test_dataset = torch.utils.data.TensorDataset(tensor_testX, tensor_testY)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch, shuffle=False)
 
 def gaussian(x, mu=0., sigma=.5):
-    return torch.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) / torch.sqrt(2 * torch.tensor(math.pi)) / sigma
-
-
-# define approximate firing function
+    return torch.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) / torch.sqrt(2 * torch.tensor(torch.pi)) / sigma
 
 class ActFun_adp(torch.autograd.Function):
     @staticmethod
@@ -74,153 +64,246 @@ class ActFun_adp(torch.autograd.Function):
     def backward(ctx, grad_output):  # approximate the gradients
         input, = ctx.saved_tensors
         grad_input = grad_output.clone()
-        # temp = abs(input) < lens
-  
-        if gradient_type == 'G':
-            temp = torch.exp(-(input**2)/(2*lens**2))/torch.sqrt(2*torch.tensor(math.pi))/lens
-        elif gradient_type == 'MG':
-            temp = gaussian(input, mu=0., sigma=lens) * (1. + hight) \
-                - gaussian(input, mu=lens, sigma=scale * lens) * hight \
-                - gaussian(input, mu=-lens, sigma=scale * lens) * hight
-        elif gradient_type =='linear':
+        if config.gradient_type == 'G':
+            temp = torch.exp(-(input**2)/(2*config.lens**2))/torch.sqrt(2*torch.tensor(torch.pi))/config.lens
+        elif config.gradient_type == 'MG':
+            temp = gaussian(input, mu=0., sigma=config.lens) * (1. + config.hight) \
+                - gaussian(input, mu=config.lens, sigma=config.scale * config.lens) * config.hight \
+                - gaussian(input, mu=-config.lens, sigma=config.scale * config.lens) * config.hight
+        elif config.gradient_type =='linear':
             temp = F.relu(1-input.abs())
-        elif gradient_type == 'slayer':
+        elif config.gradient_type == 'slayer':
             temp = torch.exp(-5*input.abs())
-        return grad_input * temp.float() * gamma
+        return grad_input * temp.float() * config.gamma
 
 act_fun_adp = ActFun_adp.apply
-# tau_m = torch.FloatTensor([tau_m])
 
-def mem_update_adp(inputs, mem, spike, tau_adp, b, tau_m, dt=1, isAdapt=1):
-    alpha = torch.exp(-1. * dt / tau_m).cuda()
-    ro = torch.exp(-1. * dt / tau_adp).cuda()
-    if isAdapt:
-        beta = 1.8
-    else:
-        beta = 0.
+class SRNN(nn.Module):
+    def __init__(self) -> None:
+        super(SRNN, self).__init__()
+        input = config.input
+        hid = config.hid
+        out = config.output
+        self.inpt_hid1 = nn.Linear(input, hid)
+        self.hid1_hid1 = nn.Linear(hid, hid) # A1
+        self.hid1_hid2 = nn.Linear(hid, hid)
+        self.hid2_hid2 = nn.Linear(hid, hid) # A2
+        self.hid2_hid3 = nn.Linear(hid, hid)
+        self.hid3_hid3 = nn.Linear(hid, hid) # A3
+        self.hid3_out = nn.Linear(hid, out)
+        
+        # self.hid1_hid1.weight.data = 0.2 * self.hid1_hid1.weight.data
+        # self.hid2_hid2.weight.data = 0.2 * self.hid2_hid2.weight.data
+        
+        nn.init.orthogonal_(self.hid1_hid1.weight)  # 主要用以解决深度网络的梯度消失爆炸问题，在RNN中经常使用
+        nn.init.orthogonal_(self.hid2_hid2.weight)
+        nn.init.orthogonal_(self.hid3_hid3.weight)
+        nn.init.xavier_uniform_(self.inpt_hid1.weight) # 保持输入输出的方差一致，避免所有输出值都趋向于0。通用方法，适用于任何激活函数
+        nn.init.xavier_uniform_(self.hid1_hid2.weight)
+        nn.init.xavier_uniform_(self.hid2_hid3.weight)
+        nn.init.xavier_uniform_(self.hid3_out.weight)
+        
+        # nn.init.constant_(self.inpt_hid1.bias, 0)
+        # nn.init.constant_(self.hid1_hid2.bias, 0)
+        # nn.init.constant_(self.hid1_hid1.bias, 0)
+        # nn.init.constant_(self.hid2_hid2.bias, 0)
+        
+        self.thr1 = nn.Parameter(torch.rand(config.hid), requires_grad=True)
+        self.decay1 = nn.Parameter(torch.rand(config.hid)*config.decay, requires_grad=True)
+        self.rst1 = nn.Parameter(torch.rand(config.hid)*config.rst, requires_grad=True)
+        
+        self.thr2 = nn.Parameter(torch.rand(config.hid), requires_grad=True)
+        self.decay2 = nn.Parameter(torch.rand(config.hid)*config.decay, requires_grad=True)
+        self.rst2 = nn.Parameter(torch.rand(config.hid)*config.rst, requires_grad=True)
+        
+        self.thr3 = nn.Parameter(torch.rand(config.hid), requires_grad=True)
+        self.decay3 = nn.Parameter(torch.rand(config.hid)*config.decay, requires_grad=True)
+        self.rst3 = nn.Parameter(torch.rand(config.hid)*config.rst, requires_grad=True)
+        
+        self.alpha = nn.Parameter(torch.rand(config.output), requires_grad=True)
+    
+    def output_Neuron(self, inputs, mem, alpha):
+        """
+        The read out neuron is leaky integrator without spike
+        """
+        mem = mem * alpha + (1. - alpha) * config.R_m * inputs
+        return mem
+    
+    def mem_update(self, input, mem, spk, thr, decay, rst):
+        mem = rst * spk + mem * decay * (1-spk) + input
+        spike = act_fun_adp(mem - thr)
+        return mem, spike
+    
+    def forward(self, input, mask, device='cuda'):
+        A1_mask, A2_mask, A3_mask, _ = mask
+        batch = input.shape[0]
+        time_step = input.shape[1]
+        
+        hid1_mem = torch.rand(batch, config.hid).to(device)
+        # hid1_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(device)
+        hid1_spk = torch.zeros(batch, config.hid).to(device)
+        
+        hid2_mem = torch.rand(batch, config.hid).to(device)
+        # hid2_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(device)
+        hid2_spk = torch.zeros(batch, config.hid).to(device)
+        
+        hid3_mem = torch.rand(batch, config.hid).to(device)
+        # hid2_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(device)
+        hid3_spk = torch.zeros(batch, config.hid).to(device)
+        
+        out_mem = torch.rand(batch, config.output).to(device)
+        # out_mem = torch.zeros(batch, config.output).uniform_(0, 0.1).to(device)
+        output = torch.zeros(batch, config.output).to(device)
+        
+        sum1_spk = torch.zeros(batch, config.hid).to(device)
+        sum2_spk = torch.zeros(batch, config.hid).to(device)
+        sum3_spk = torch.zeros(batch, config.hid).to(device)
+        
+        if config.dropout>0:
+            self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * A1_mask.T.to(device)
+            self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * A2_mask.T.to(device)
+            self.hid3_hid3.weight.data = self.hid3_hid3.weight.data * A3_mask.T.to(device)
+        for t in range(time_step):
+            input_t = input[:,t,:].float()
+            
+            ########## Layer 1 ##########
+            inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
+            hid1_mem, hid1_spk = self.mem_update(inpt_hid1, hid1_mem, hid1_spk, self.thr1, self.decay1, self.rst1)
+            sum1_spk += hid1_spk
+            
+            ########## Layer 2 ##########
+            inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
+            hid2_mem, hid2_spk = self.mem_update(inpt_hid2, hid2_mem, hid2_spk, self.thr2, self.decay2, self.rst2)
+            sum2_spk += hid2_spk
+            
+            ########## Layer 3 ##########
+            inpt_hid3 = self.hid2_hid3(hid2_spk) + self.hid3_hid3(hid3_spk)
+            hid3_mem, hid3_spk = self.mem_update(inpt_hid3, hid3_mem, hid3_spk, self.thr3, self.decay3, self.rst3)
+            sum3_spk += hid3_spk
+            
+            ########## Layer out ########
+            inpt_out = self.hid3_out(hid3_spk)
+            out_mem = self.output_Neuron(inpt_out, out_mem, self.alpha)
+            if t > 10:
+                output += F.softmax(out_mem, dim=1)
+            
+        sum1_spk /= time_step
+        sum2_spk /= time_step
 
-    b = ro * b + (1 - ro) * spike
-    B = b_j0 + beta * b
+        A_norm = torch.norm(self.hid1_hid1.weight, p=1) + \
+                 torch.norm(self.hid2_hid2.weight, p=1) + \
+                 torch.norm(self.hid3_hid3.weight, p=1)
+        return output, sum1_spk, sum2_spk, A_norm
 
-    mem = mem * alpha + (1 - alpha) * R_m * inputs - B * spike * dt
-    inputs_ = mem - B
-    spike = act_fun_adp(inputs_)  # act_fun : approximation firing function
-    return mem, spike, B, b
+class SRNN_custom(nn.Module):
+    def __init__(self):
+        super(SRNN_custom, self).__init__()
+        input = config.input
+        hid = config.hid
+        out = config.output
+        self.inpt_hid1 = nn.Linear(input, hid)
+        self.hid1_hid1 = nn.Linear(hid, hid) # A1
+        self.hid1_hid2 = nn.Linear(hid, hid)
+        self.hid2_hid2 = nn.Linear(hid, hid) # A2
+        self.hid2_out = nn.Linear(hid, out)
+        
+        # self.hid1_hid1.weight.data = 0.2 * self.hid1_hid1.weight.data
+        # self.hid2_hid2.weight.data = 0.2 * self.hid2_hid2.weight.data
+        
+        nn.init.orthogonal_(self.hid1_hid1.weight)  # 主要用以解决深度网络的梯度消失爆炸问题，在RNN中经常使用
+        nn.init.orthogonal_(self.hid2_hid2.weight)
+        nn.init.xavier_uniform_(self.inpt_hid1.weight) # 保持输入输出的方差一致，避免所有输出值都趋向于0。通用方法，适用于任何激活函数
+        nn.init.xavier_uniform_(self.hid1_hid2.weight)
+        nn.init.xavier_uniform_(self.hid2_out.weight)
 
+        nn.init.constant_(self.inpt_hid1.bias, 0)
+        nn.init.constant_(self.hid1_hid2.bias, 0)
+        nn.init.constant_(self.hid1_hid1.bias, 0)
+        nn.init.constant_(self.hid2_hid2.bias, 0)
+        
+        self.tau_adp_h1 = nn.Parameter(torch.Tensor(hid))
+        self.tau_adp_h2 = nn.Parameter(torch.Tensor(hid))
+        self.tau_adp_o = nn.Parameter(torch.Tensor(out))
+        self.tau_m_h1 = nn.Parameter(torch.Tensor(hid))
+        self.tau_m_h2 = nn.Parameter(torch.Tensor(hid))
+        self.tau_m_o = nn.Parameter(torch.Tensor(out))
 
-def output_Neuron(inputs, mem, tau_m, dt=1):
-    """
-    The read out neuron is leaky integrator without spike
-    """
-    # alpha = torch.exp(-1. * dt / torch.FloatTensor([30.])).cuda()
-    alpha = torch.exp(-1. * dt / tau_m).cuda()
-    mem = mem * alpha + (1. - alpha) * R_m * inputs
-    return mem
-
-
-class RNN_custom(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(RNN_custom, self).__init__()
-
-        self.hidden_size = hidden_size
-        # self.hidden_size = input_size
-        self.i_2_h1 = nn.Linear(input_size, hidden_size[0])
-        self.h1_2_h1 = nn.Linear(hidden_size[0], hidden_size[0])
-        self.h1_2_h2 = nn.Linear(hidden_size[0], hidden_size[1])
-        self.h2_2_h2 = nn.Linear(hidden_size[1], hidden_size[1])
-
-        self.h2o = nn.Linear(hidden_size[1], output_size)
-
-        self.tau_adp_h1 = nn.Parameter(torch.Tensor(hidden_size[0]))
-        self.tau_adp_h2 = nn.Parameter(torch.Tensor(hidden_size[1]))
-        self.tau_adp_o = nn.Parameter(torch.Tensor(output_size))
-        self.tau_m_h1 = nn.Parameter(torch.Tensor(hidden_size[0]))
-        self.tau_m_h2 = nn.Parameter(torch.Tensor(hidden_size[1]))
-        self.tau_m_o = nn.Parameter(torch.Tensor(output_size))
-
-        # nn.init.orthogonal_(self.h1_2_h1.weight)
-        # nn.init.orthogonal_(self.h2_2_h2.weight)
-        nn.init.orthogonal_(self.h1_2_h1.weight)
-        nn.init.orthogonal_(self.h2_2_h2.weight)
-        nn.init.xavier_uniform_(self.i_2_h1.weight)
-        nn.init.xavier_uniform_(self.h1_2_h2.weight)
-        nn.init.xavier_uniform_(self.h2o.weight)
-
-        nn.init.constant_(self.i_2_h1.bias, 0)
-        nn.init.constant_(self.h1_2_h2.bias, 0)
-        nn.init.constant_(self.h2_2_h2.bias, 0)
-        nn.init.constant_(self.h1_2_h1.bias, 0)
-
-        nn.init.normal_(self.tau_adp_h1,150,10)
-        nn.init.normal_(self.tau_adp_h2, 150,10)
-        nn.init.normal_(self.tau_adp_o, 150,10)
-        nn.init.normal_(self.tau_m_h1, 20.,5)
-        nn.init.normal_(self.tau_m_h2, 20.,5)
-        nn.init.normal_(self.tau_m_o, 20.,5)
+        nn.init.normal_(self.tau_adp_h1, 150, 10)
+        nn.init.normal_(self.tau_adp_h2, 150, 10)
+        nn.init.normal_(self.tau_adp_o, 150, 10)
+        nn.init.normal_(self.tau_m_h1, 20., 5)
+        nn.init.normal_(self.tau_m_h2, 20., 5)
+        nn.init.normal_(self.tau_m_o, 20., 5)
 
         self.dp = nn.Dropout(0.1)
 
-        self.b_h1 = self.b_h2 = self.b_o = 0
-
-    def forward(self, input):
-        batch_size, seq_num, input_dim = input.shape
-        self.b_h1 = self.b_h2 = self.b_o = b_j0
-        # mem_layer1 = spike_layer1 = torch.zeros(batch_size, self.hidden_size[0]).cuda()
-        # mem_layer2 = spike_layer2 = torch.zeros(batch_size, self.hidden_size[1]).cuda()
-        mem_layer1 = torch.rand(batch_size, self.hidden_size[0]).cuda()
-        mem_layer2 = torch.rand(batch_size, self.hidden_size[1]).cuda()
-
-        spike_layer1 = torch.zeros(batch_size, self.hidden_size[0]).cuda()
-        spike_layer2 = torch.zeros(batch_size, self.hidden_size[1]).cuda()
-        mem_output = torch.rand(batch_size, output_dim).cuda()
-        output = torch.zeros(batch_size, output_dim).cuda()
+        self.b_hid1 = self.b_hid2 = self.b_o = 0
+    
+    def output_Neuron(self, inputs, mem, tau_m, dt=1):
+        """
+        The read out neuron is leaky integrator without spike
+        """
+        # alpha = torch.exp(-1. * dt / torch.FloatTensor([30.])).cuda()
+        alpha = torch.exp(-1. * dt / tau_m).cuda()
+        mem = mem * alpha + (1. - alpha) * config.R_m * inputs
+        return mem
+    
+    def mem_update_adp(self, inputs, mem, spike, tau_adp, b, tau_m, dt=1, isAdapt=1):
+        alpha = torch.exp(-1. * dt / tau_m).cuda()
+        ro = torch.exp(-1. * dt / tau_adp).cuda()
+        if isAdapt: beta = 1.8
+        else:       beta = 0.
+        b = ro * b + (1 - ro) * spike
+        B = config.b_j0 + beta * b
+        mem = mem * alpha + (1 - alpha) * config.R_m * inputs - B * spike * dt
+        spike = act_fun_adp(mem - B)
+        return mem, spike, B, b
+    
+    def forward(self, input, mask, device='cuda'):
+        A1_mask, A2_mask, _, _ = mask
+        batch, time_step, _ = input.shape
+        self.b_hid1 = self.b_hid2 = self.b_o = config.b_j0
+        hid1_mem = torch.rand(batch, config.hid).to(device)
+        hid1_spk = torch.zeros(batch, config.hid).to(device)
+        hid2_mem = torch.rand(batch, config.hid).to(device)
+        hid2_spk = torch.zeros(batch, config.hid).to(device)
+        out_mem = torch.rand(batch, config.output).to(device)
+        output = torch.zeros(batch, config.output).to(device)
 
         hidden_spike_ = []
         hidden_mem_ = []
         h2o_mem_ = []
-
-        for i in range(seq_num):
-            input_x = input[:, i, :]
-
-            h_input = self.i_2_h1(input_x.float()) + self.h1_2_h1(spike_layer1)
-            mem_layer1, spike_layer1, theta_h1, self.b_h1 = mem_update_adp(h_input, mem_layer1, spike_layer1,
-                                                                         self.tau_adp_h1, self.b_h1,self.tau_m_h1)
+        if config.dropout>0:
+            self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * A1_mask.T.to(device)
+            self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * A2_mask.T.to(device)
+        for t in range(time_step):
+            input_t = input[:,t,:].float()
+            ########## Layer 1 ##########
+            inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
+            hid1_mem, hid1_spk, theta_h1, self.b_hid1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk,
+                                                                          self.tau_adp_h1, self.b_hid1, self.tau_m_h1)
             # spike_layer1 = self.dp(spike_layer1)
-            h2_input = self.h1_2_h2(spike_layer1) + self.h2_2_h2(spike_layer2)
-            mem_layer2, spike_layer2, theta_h2, self.b_h2 = mem_update_adp(h2_input, mem_layer2, spike_layer2,
-                                                                         self.tau_adp_h2, self.b_h2, self.tau_m_h2)
-            mem_output = output_Neuron(self.h2o(spike_layer2), mem_output, self.tau_m_o)
-            if i > 10:
-                output= output + F.softmax(mem_output, dim=1)#F.softmax(mem_output, dim=1)#
+            ########## Layer 2 ##########
+            inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
+            hid2_mem, hid2_spk, theta_h2, self.b_hid2 = self.mem_update_adp(inpt_hid2, hid2_mem, hid2_spk,
+                                                                          self.tau_adp_h2, self.b_hid2, self.tau_m_h2)
+            ########## Layer out ########
+            inpt_out = self.hid2_out(hid2_spk)
+            out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
+            if t > 10:
+                output += F.softmax(out_mem, dim=1)
 
-            hidden_spike_.append(spike_layer1.data.cpu().numpy())
-            hidden_mem_.append(mem_layer1.data.cpu().numpy())
-            h2o_mem_.append(mem_output.data.cpu().numpy())
+            hidden_spike_.append(hid1_spk.data.cpu().numpy())
+            hidden_mem_.append(hid1_mem.data.cpu().numpy())
+            h2o_mem_.append(out_mem.data.cpu().numpy())
 
         return output, hidden_spike_, hidden_mem_, h2o_mem_
-
-
-'''
-STEP 4: INSTANTIATE MODEL CLASS
-'''
-input_dim = 700
-hidden_dim = [256, 128]  # 128
-output_dim = 20
-seq_dim = 100 # 250  # Number of steps to unroll
-num_encode = 700
-total_steps = seq_dim
-
-model = RNN_custom(input_dim, hidden_dim, output_dim)
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("device:", device)
-model.to(device)
+model = SRNN_custom().to(config.device)
 criterion = nn.CrossEntropyLoss()
-learning_rate =  1e-2
 
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, eps=1e-5)
+optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, eps=1e-5)
 
-# base_params = [model.i_2_h1.weight, model.i_2_h1.bias,
+# base_params = [model.inpt_hid1.weight, model.inpt_hid1.bias,
 #                model.h1_2_h1.weight, model.h1_2_h1.bias,
 #                model.h1_2_h2.weight, model.h1_2_h2.bias,
 #                model.h2_2_h2.weight, model.h2_2_h2.bias,
@@ -234,84 +317,75 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, eps=1e-5)
 #     {'params': model.tau_m_o, 'lr': learning_rate * 1}],
 #     lr=learning_rate,eps=1e-5)
 
-scheduler = StepLR(optimizer, step_size=10, gamma=.5)
 
-
-def train(model, num_epochs=150):
-    acc = []
+def train(model, optimizer, criterion, num_epochs, train_loader, test_loader, device):
+    scheduler = StepLR(optimizer, step_size=10, gamma=.5)
+    train_accs, test_accs = [], []
     best_accuracy = 80
+    m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+    m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+    m3 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+    m4 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+    mask = [m1.float(), m2.float(), m3.float(), m4.float()]
     
-    for epoch in range(1,num_epochs):
+    for epoch in range(num_epochs):
+        now = time.time()
         loss_sum = 0
-        total = 0
-        correct = 0
+        correct, total = 0, 0
         for i, (images, labels) in enumerate(train_loader):
-            images = images.view(-1, seq_dim, input_dim).requires_grad_().to(device)
+            images = images.view(-1, config.time_step, config.input).requires_grad_().to(device)
             labels = labels.long().to(device)
-            # Clear gradients w.r.t. parameters
             optimizer.zero_grad()
-            # Forward pass to get output/logits
-            outputs, _,_,_ = model(images)
+            outputs, _, _, _ = model(images.to(device), mask, device)
             _, predicted = torch.max(outputs.data, 1)
-            # Calculate Loss: softmax --> cross entropy loss
+            total += labels.size(0)
+            correct += (predicted.cpu() == labels.long().cpu()).sum()
             loss = criterion(outputs, labels)
-            loss_sum+= loss
-            # Getting gradients w.r.t. parameters
+            loss_sum += loss.item()
             loss.backward()
-            # Updating parameters
             optimizer.step()
 
-            total += labels.size(0)
-            if torch.cuda.is_available():
-                correct += (predicted.cpu() == labels.long().cpu()).sum()
-            else:
-                correct += (predicted == labels).sum()
+
 
         scheduler.step()
-        accuracy = 100. * correct.numpy() / total
-        # accuracy,_ = test(model, train_loader)
-        ts_acc,fr = test(model,is_test=0)
-        if ts_acc > best_accuracy and accuracy > 80:
+        tr_acc = 100. * correct.numpy() / total
+        ts_acc, fr = test(model, test_loader, is_test=0)
+        if ts_acc > best_accuracy and tr_acc > 80:
             torch.save(model, './model_' + str(ts_acc) + '-readout-2layer-v2-4ms.pth')
             best_accuracy = ts_acc
- 
-        print('epoch: ', epoch, '. Loss: ', loss.item(), '. Tr Accuracy: ', accuracy, '. Ts Accuracy: ',
-         ts_acc, 'Fr: ',fr)
 
-        acc.append(accuracy)
-        # if epoch %5==0:
-        #     print('epoch: ', epoch, '. Loss: ', loss_sum.item()/i, 
-        #             '. Tr Accuracy: ', accuracy, '. Ts Accuracy: ', ts_acc,', Fr: ',fr)
-    return acc
+        print('epoch: ', epoch, 
+              '. Loss: ', loss.item(), 
+              '. Tr Accuracy: ', tr_acc, 
+              '. Ts Accuracy: ', ts_acc, 
+              '. Fr: ', fr,
+              '. Time: ', time.time()-now
+              )
+
+        train_accs.append(tr_acc)
+        test_accs.append(ts_acc)
+    return np.array(train_accs), np.array(test_accs)
 
 
-def test(model, dataloader=test_loader,is_test=0):
-    correct = 0
-    total = 0
-    # Iterate through test dataset
-    for images, labels in dataloader:
-        images = images.view(-1, seq_dim, input_dim).to(device)
-
-        outputs, fr_,_,_ = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        if torch.cuda.is_available():
+def test(model, dataloader=test_loader, is_test=0):
+    with torch.no_grad():
+        correct, total = 0, 0
+        for images, labels in dataloader:
+            images = images.view(-1, config.time_step, config.input_dim).to(config.device)
+            outputs, fr_, _, _ = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
-        else:
-            correct += (predicted == labels).sum()
-
-    accuracy = 100. * correct.numpy() / total
-    if is_test:
-        print('Mean FR: ', np.array(fr_).mean())
+        accuracy = 100. * correct.numpy() / total
+        if is_test:
+            print('Mean FR: ', np.array(fr_).mean())
     return accuracy, np.array(fr_).mean()
 
 
 ###############################
-acc = train(model, num_epochs)
-test_acc,fr = test(model,is_test=1)
+acc = train(model, optimizer, criterion, config.epoch, train_loader, test_dataset, config.device)
+test_acc, fr = test(model, test_loader, is_test=1)
 print(' Accuracy: ', test_acc)
-
-
 
 # dataset shape:  (8156, 250, 700)
 # dataset shape:  (2264, 250, 700)
