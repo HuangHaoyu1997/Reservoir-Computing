@@ -19,3 +19,4 @@ data/cifar-100-python/test
 data/cifar-100-python/train
 data/cifar-100-python/file.txt~
 *.tar
+*.npy
