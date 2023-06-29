@@ -1,3 +1,7 @@
+'''
+modified from https://github.com/byin-cwi/Efficient-spiking-networks/blob/main/SHD/SHD_2layer_ALIF.py
+
+'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,7 +15,7 @@ class config:
     input = 700
     hid = 128         # number of RC Neurons
     output = 20
-    time_step = 250 # 250  # Number of steps to unroll
+    time_step = 250  # Number of steps to unroll
     lr = 1e-2
     b_j0 = 0.01  # neural threshold baseline
     R_m = 1 # membrane resistance
@@ -22,17 +26,19 @@ class config:
     scale = 6.        # special for 'MG'
     hight = 0.15      # special for 'MG'
     lens = 0.5  # hyper-parameters of approximate function
-    epoch = 100
+    epoch = 40
+    trials = 5
     dropout = 0
-    dropout_stepping = 0.005
+    dropout_stepping = 0.01
     dropout_stop = 0.90
+    smoothing = 0.1
     device = torch.device('cuda')
 
 np.random.seed(config.seed)
 torch.manual_seed(config.seed)
 torch.cuda.manual_seed_all(config.seed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
 
 train_X = np.load('data/trainX_4ms.npy')
 train_y = np.load('data/trainY_4ms.npy').astype(np.float)
@@ -260,7 +266,7 @@ class SRNN_custom(nn.Module):
         return mem, spike, B, b
     
     def forward(self, input, mask, device='cuda'):
-        A1_mask, A2_mask, _, _ = mask
+        A1_mask, A2_mask = mask
         batch, time_step, _ = input.shape
         self.b_hid1 = self.b_hid2 = self.b_o = config.b_j0
         hid1_mem = torch.rand(batch, config.hid).to(device)
@@ -273,7 +279,7 @@ class SRNN_custom(nn.Module):
         hidden_spike_ = []
         hidden_mem_ = []
         h2o_mem_ = []
-        if config.dropout>0:
+        if config.dropout > 0:
             self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * A1_mask.T.to(device)
             self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * A2_mask.T.to(device)
         for t in range(time_step):
@@ -293,40 +299,21 @@ class SRNN_custom(nn.Module):
             if t > 10:
                 output += F.softmax(out_mem, dim=1)
 
-            hidden_spike_.append(hid1_spk.data.cpu().numpy())
-            hidden_mem_.append(hid1_mem.data.cpu().numpy())
+            hidden_spike_.append(hid2_spk.data.cpu().numpy())
+            hidden_mem_.append(hid2_mem.data.cpu().numpy())
             h2o_mem_.append(out_mem.data.cpu().numpy())
-
+        A_norm = torch.norm(self.hid1_hid1.weight, p=1) + torch.norm(self.hid2_hid2.weight, p=1)
         return output, hidden_spike_, hidden_mem_, h2o_mem_
-model = SRNN_custom().to(config.device)
-criterion = nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, eps=1e-5)
-
-# base_params = [model.inpt_hid1.weight, model.inpt_hid1.bias,
-#                model.h1_2_h1.weight, model.h1_2_h1.bias,
-#                model.h1_2_h2.weight, model.h1_2_h2.bias,
-#                model.h2_2_h2.weight, model.h2_2_h2.bias,
-#                model.h2o.weight, model.h2o.bias]
-# optimizer = torch.optim.Adam([
-#     {'params': base_params},
-#     {'params': model.tau_adp_h1, 'lr': learning_rate * 5},
-#     {'params': model.tau_adp_h2, 'lr': learning_rate * 5},
-#     {'params': model.tau_m_h1, 'lr': learning_rate * 1},
-#     {'params': model.tau_m_h2, 'lr': learning_rate * 1},
-#     {'params': model.tau_m_o, 'lr': learning_rate * 1}],
-#     lr=learning_rate,eps=1e-5)
 
 
 def train(model, optimizer, criterion, num_epochs, train_loader, test_loader, device):
-    scheduler = StepLR(optimizer, step_size=10, gamma=.5)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
     train_accs, test_accs = [], []
-    best_accuracy = 80
+    best_accuracy = 85
     m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
     m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    m3 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    m4 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    mask = [m1.float(), m2.float(), m3.float(), m4.float()]
+    mask = [m1.float(), m2.float()]
     
     for epoch in range(num_epochs):
         now = time.time()
@@ -335,23 +322,31 @@ def train(model, optimizer, criterion, num_epochs, train_loader, test_loader, de
         for i, (images, labels) in enumerate(train_loader):
             images = images.view(-1, config.time_step, config.input).requires_grad_().to(device)
             labels = labels.long().to(device)
+            
             optimizer.zero_grad()
             outputs, _, _, _ = model(images.to(device), mask, device)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
-            loss = criterion(outputs, labels)
+            
+            # label smoothing
+            if config.smoothing>0:
+                with torch.no_grad():
+                    true_dist = torch.zeros_like(outputs)
+                    true_dist.fill_(config.smoothing / (config.output - 1))
+                    true_dist.scatter_(1, labels.unsqueeze(1), 1.0 - config.smoothing)
+                
+                loss = criterion(outputs, true_dist)
+            else:
+                loss = criterion(outputs, labels)
             loss_sum += loss.item()
             loss.backward()
             optimizer.step()
-
-
-
         scheduler.step()
         tr_acc = 100. * correct.numpy() / total
-        ts_acc, fr = test(model, test_loader, is_test=0)
-        if ts_acc > best_accuracy and tr_acc > 80:
-            torch.save(model, './model_' + str(ts_acc) + '-readout-2layer-v2-4ms.pth')
+        ts_acc, fr = test(model, test_loader, mask, is_test=0)
+        if ts_acc > best_accuracy and tr_acc > 85:
+            torch.save(model, './model_no_mask-label_smooth_0.2_' + str(ts_acc) + '-readout-2layer-v2-4ms.pth')
             best_accuracy = ts_acc
 
         print('epoch: ', epoch, 
@@ -364,15 +359,19 @@ def train(model, optimizer, criterion, num_epochs, train_loader, test_loader, de
 
         train_accs.append(tr_acc)
         test_accs.append(ts_acc)
+        if (m1==0).sum().item()/config.hid**2 <= config.dropout_stop or \
+            (m2==0).sum().item()/config.hid**2 <= config.dropout_stop:
+            m1 = m1&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
+            m2 = m2&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
+            mask = [m1.float(), m2.float()]
     return np.array(train_accs), np.array(test_accs)
 
-
-def test(model, dataloader=test_loader, is_test=0):
+def test(model, dataloader, mask, is_test=0):
     with torch.no_grad():
         correct, total = 0, 0
         for images, labels in dataloader:
-            images = images.view(-1, config.time_step, config.input_dim).to(config.device)
-            outputs, fr_, _, _ = model(images)
+            images = images.view(-1, config.time_step, config.input).to(config.device)
+            outputs, fr_, _, _ = model(images, mask)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
@@ -383,9 +382,81 @@ def test(model, dataloader=test_loader, is_test=0):
 
 
 ###############################
-acc = train(model, optimizer, criterion, config.epoch, train_loader, test_dataset, config.device)
-test_acc, fr = test(model, test_loader, is_test=1)
-print(' Accuracy: ', test_acc)
+model = SRNN_custom().to(config.device)
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, eps=1e-5)
+# acc = train(model, optimizer, criterion, config.epoch, train_loader, test_loader, config.device)
+# test_acc, fr = test(model, test_loader, is_test=1)
+# print(' Accuracy: ', test_acc)
+
+# base_params = [model.inpt_hid1.weight, model.inpt_hid1.bias,
+#                model.hid1_hid1.weight, model.hid1_hid1.bias,
+#                model.hid1_hid2.weight, model.hid1_hid2.bias,
+#                model.hid2_hid2.weight, model.hid2_hid2.bias,
+#                model.hid2_out.weight, model.hid2_out.bias]
+# optimizer = torch.optim.Adam([
+#     {'params': base_params},
+#     {'params': model.tau_adp_h1, 'lr': learning_rate * 5},
+#     {'params': model.tau_adp_h2, 'lr': learning_rate * 5},
+#     {'params': model.tau_m_h1, 'lr': learning_rate * 1},
+#     {'params': model.tau_m_h2, 'lr': learning_rate * 1},
+#     {'params': model.tau_m_o, 'lr': learning_rate * 1}],
+#     lr=learning_rate, eps=1e-5)
+
+
+
+
+def multiple_trial():
+    train_acc_log = np.zeros((config.epoch, config.trials))
+    test_acc_log = np.zeros((config.epoch, config.trials))
+    for i in range(config.trials):
+        print('************** ', i, ' **************')
+        np.random.seed(config.seed+i)
+        torch.manual_seed(config.seed+i)
+        torch.cuda.manual_seed_all(config.seed+i)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+        # model = RC().to(config.device)
+        model = SRNN_custom().to(config.device)
+        criterion = nn.CrossEntropyLoss()
+        # optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, weight_decay=config.weight_decay)
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, eps=1e-5)
+        train_acc, test_acc = train(model, optimizer, criterion, config.epoch, train_loader, test_loader, config.device)
+        train_acc_log[:,i] = train_acc
+        test_acc_log[:,i] = test_acc
+    return train_acc_log, test_acc_log
+
+def plot_errorbar(train_acc_log, test_acc_log, file_name):
+    train_mean = np.mean(train_acc_log, axis=1)
+    train_std = np.std(train_acc_log, axis=1)
+    train_var = np.var(train_acc_log, axis=1)
+    train_max = np.max(train_acc_log, axis=1)
+    train_min = np.min(train_acc_log, axis=1)
+
+    test_mean = np.mean(test_acc_log, axis=1)
+    test_std = np.std(test_acc_log, axis=1)
+    test_var = np.var(test_acc_log, axis=1)
+    test_max = np.max(test_acc_log, axis=1)
+    test_min = np.min(test_acc_log, axis=1)
+
+    plt.plot(list(range(config.epoch)), train_mean, color='deeppink', label='train mean')
+    plt.fill_between(list(range(config.epoch)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
+    # plt.fill_between(list(range(config.epoch)), train_min, train_max, color='violet', alpha=0.2)
+
+    plt.plot(list(range(config.epoch)), test_mean, color='blue', label='test mean')
+    plt.fill_between(list(range(config.epoch)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
+    # plt.fill_between(list(range(config.epoch)), test_min, test_max, color='blue', alpha=0.2)
+
+    plt.legend()
+    plt.grid()
+    # plt.axis([-5, 105, 75, 95])
+    plt.savefig(file_name)
+    # plt.show()
+
+train_acc_log, test_acc_log = multiple_trial()
+plot_errorbar(train_acc_log, test_acc_log, 'SHD_ALIF_no_mask-label_smooth_0.3.pdf')
+
 
 # dataset shape:  (8156, 250, 700)
 # dataset shape:  (2264, 250, 700)

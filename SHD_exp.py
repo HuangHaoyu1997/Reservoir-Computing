@@ -31,7 +31,6 @@ class config:
     decay = 0.5
     rst = 0.05
     
-    
     data_augment = False
     augment_noise = 0.9
     input_learn = True # learnable input layer
@@ -309,17 +308,14 @@ class SRNN_custom(nn.Module):
         hid1_mem = torch.rand(batch, config.hid).to(device)
         # hid1_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(device)
         hid1_spk = torch.zeros(batch, config.hid).to(device)
-        
         hid2_mem = torch.rand(batch, config.hid).to(device)
         # hid2_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(device)
         hid2_spk = torch.zeros(batch, config.hid).to(device)
-        
         out_mem = torch.rand(batch, config.output).to(device)
         # out_mem = torch.zeros(batch, config.output).uniform_(0, 0.1).to(device)
         output = torch.zeros(batch, config.output).to(device)
-        
-        sum1_spk = torch.zeros(batch, config.hid).to(device)
-        sum2_spk = torch.zeros(batch, config.hid).to(device)
+        # sum1_spk = torch.zeros(batch, config.hid).to(device)
+        # sum2_spk = torch.zeros(batch, config.hid).to(device)
         
         if config.dropout>0:
             self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * A1_mask.T.to(device)
@@ -330,25 +326,22 @@ class SRNN_custom(nn.Module):
             inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
             hid1_mem, hid1_spk, theta_h1, self.b_hid1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk,
                                                                           self.tau_adp_h1, self.b_hid1, self.tau_m_h1)
-            sum1_spk += hid1_spk
             # spike_layer1 = self.dp(spike_layer1)
             ########## Layer 2 ##########
             inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
             hid2_mem, hid2_spk, theta_h2, self.b_hid2 = self.mem_update_adp(inpt_hid2, hid2_mem, hid2_spk,
                                                                           self.tau_adp_h2, self.b_hid2, self.tau_m_h2)
-            sum2_spk += hid2_spk
-            
             ########## Layer out ########
             inpt_out = self.hid2_out(hid2_spk)
             out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
             if t > 10:
                 output += F.softmax(out_mem, dim=1)
             
-        sum1_spk /= time_step
-        sum2_spk /= time_step
+        # sum1_spk /= time_step
+        # sum2_spk /= time_step
 
         A_norm = torch.norm(self.hid1_hid1.weight, p=1) + torch.norm(self.hid2_hid2.weight, p=1)
-        return output, sum1_spk, sum2_spk, A_norm
+        return output, 1, 2, A_norm
 
 def train(model, optimizer, criterion, num_epochs, train_loader, test_loader, device):
     scheduler = StepLR(optimizer, step_size=10, gamma=.5)
@@ -408,18 +401,18 @@ def test(model, dataloader, mask, device='cuda'):
             total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
         accuracy = 100. * correct.numpy() / total
-    return accuracy
 
-config.l1_targ = 50000
-config.dropout = 0
-config.dropout_stepping = 0.01
-config.dropout_stop = 0.05
-model = RC_revise().to(config.device)
+    return accuracy
+model = SRNN_custom().to(config.device)
 # model = RC_revise().to(config.device)
 # model = RC_RadLIF().to(config.device)
 # model = RC_parallel().to(config.device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), 
                               lr=config.lr,
-                              weight_decay=config.weight_decay)
+                              weight_decay=config.weight_decay,
+                              eps=1e-5)
+
 acc = train(model, optimizer, criterion, config.epoch, train_loader, test_loader, 'cuda')
+
+
