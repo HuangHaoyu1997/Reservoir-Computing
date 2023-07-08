@@ -1,0 +1,13 @@
+
+time 00h 00m 05s, episodes 3, frames 0.000363M, mean epr -142.40, run loss 740.28
+time 00h 00m 10s, episodes 7, frames 0.000780M, mean epr -139.55, run loss 329.52
+time 00h 00m 16s, episodes 14, frames 0.001204M, mean epr -139.42, run loss 716.92
+time 00h 00m 21s, episodes 18, frames 0.001566M, mean epr -113.01, run loss 258.18
+time 00h 00m 26s, episodes 25, frames 0.002019M, mean epr -74.68, run loss 238.80
+time 00h 00m 31s, episodes 30, frames 0.002467M, mean epr -317.31, run loss 2041.40
+time 00h 00m 36s, episodes 34, frames 0.002948M, mean epr -96.19, run loss 158.31
+time 00h 00m 41s, episodes 37, frames 0.003428M, mean epr -382.10, run loss 3737.06
+time 00h 00m 46s, episodes 41, frames 0.003908M, mean epr -264.73, run loss 1576.07
+time 00h 00m 52s, episodes 45, frames 0.004383M, mean epr -302.28, run loss 4852.32
+time 00h 00m 57s, episodes 48, frames 0.004869M, mean epr -717.59, run loss 3394.09
+time 00h 01m 02s, episodes 52, frames 0.005341M, mean epr -666.89, run loss 3097.44

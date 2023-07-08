@@ -1,0 +1,4 @@
+
+time 00h 00m 05s, episodes 0, frames 0.000013M, mean epr 0.00, run loss 0.00
+time 00h 00m 14s, episodes 0, frames 0.000048M, mean epr 0.00, run loss 0.00
+time 00h 00m 24s, episodes 0, frames 0.000170M, mean epr 0.00, run loss 0.00
