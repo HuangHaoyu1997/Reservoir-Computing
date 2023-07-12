@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import time, warnings
+warnings.filterwarnings("ignore")
 from utils import A_cluster
 from tqdm.auto import tqdm
 from torchvision import transforms, datasets
