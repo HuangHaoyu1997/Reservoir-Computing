@@ -41,9 +41,9 @@ torch.cuda.manual_seed_all(config.seed)
 # torch.backends.cudnn.benchmark = False
 
 train_X = np.load('data/trainX_4ms.npy')
-train_y = np.load('data/trainY_4ms.npy').astype(np.float)
+train_y = np.load('data/trainY_4ms.npy').astype(float)
 test_X = np.load('data/testX_4ms.npy')
-test_y = np.load('data/testY_4ms.npy').astype(np.float)
+test_y = np.load('data/testY_4ms.npy').astype(float)
 
 print('dataset shape: ', train_X.shape)
 print('dataset shape: ', test_X.shape)
@@ -288,7 +288,7 @@ class SRNN_custom(nn.Module):
             inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
             hid1_mem, hid1_spk, theta_h1, self.b_hid1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk,
                                                                           self.tau_adp_h1, self.b_hid1, self.tau_m_h1)
-            # spike_layer1 = self.dp(spike_layer1)
+            # hid1_spk = self.dp(hid1_spk)
             ########## Layer 2 ##########
             inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
             hid2_mem, hid2_spk, theta_h2, self.b_hid2 = self.mem_update_adp(inpt_hid2, hid2_mem, hid2_spk,

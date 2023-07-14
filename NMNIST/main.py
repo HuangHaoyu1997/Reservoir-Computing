@@ -1,5 +1,5 @@
 '''
-首次修改2023年7月12日23:59:14
+首次修改2023年7月13日22:10:55
 
 '''
 import torch
@@ -13,11 +13,13 @@ warnings.filterwarnings("ignore")
 from tqdm.auto import tqdm
 from torchvision import transforms, datasets
 from copy import deepcopy
+from spikingjelly.datasets.n_mnist import NMNIST
+
 
 class config:
     input = 700
     output = 20
-    hid = 256         # number of RC Neurons
+    hid = 128         # number of RC Neurons
     thr = 0.5
     b_j0 = 0.01       # thr baseline
     dt = 1
@@ -51,18 +53,18 @@ class config:
     R = 0.2           # distance factor when deciding connections in random network
     scale = False     # rescale matrix A with spectral radius
     
-    input_learn = True # learnable input layer
+    input_learn = False # learnable input layer
     seed = 123
     trials = 5        # try on 5 different seeds
-    batch = 256
+    batch = 512
     epoch = 100
-    lr = 0.005
+    lr = 0.01
     l1 = 0.0003
     l1_targ = 2000
     fr_norm = 0.01
     fr_targ = 0.05
     dropout = 0.75
-    dropout_stepping = 0.015
+    dropout_stepping = 0.02
     dropout_stop = 0.95
     weight_decay = 1e-4
     label_smoothing = False
@@ -74,24 +76,10 @@ class config:
 
 #####################################
 ########### load SHD data ###########
-
-train_X = np.load('data/trainX_4ms.npy')
-train_y = np.load('data/trainY_4ms.npy').astype(float)
-
-test_X = np.load('data/testX_4ms.npy')
-test_y = np.load('data/testY_4ms.npy').astype(float)
-
-print('dataset shape: ', train_X.shape)
-print('dataset shape: ', test_X.shape)
-
-tensor_trainX = torch.Tensor(train_X)  # transform to torch tensor
-tensor_trainY = torch.Tensor(train_y)
-train_dataset = torch.utils.data.TensorDataset(tensor_trainX, tensor_trainY)
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
-tensor_testX = torch.Tensor(test_X)  # transform to torch tensor
-tensor_testY = torch.Tensor(test_y)
-test_dataset = torch.utils.data.TensorDataset(tensor_testX, tensor_testY)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch, shuffle=False)
+nmnist_train = NMNIST('./data/', train=True, data_type='frame', frames_number=10, split_by='number')
+nmnist_test = NMNIST('./data/', train=False, data_type='frame', frames_number=10, split_by='number')
+train_loader = torch.utils.data.DataLoader(dataset=nmnist_train, batch_size=config.batch, shuffle=True, drop_last=False, num_workers=0)
+test_loader = torch.utils.data.DataLoader(dataset=nmnist_test, batch_size=config.batch, shuffle=False, drop_last=False, num_workers=0)
 
 ##########################################################
 ########### define surrogate gradient function ###########
@@ -128,7 +116,10 @@ act_fun_adp = ActFun_adp.apply
 class RC(nn.Module):
     def __init__(self):
         super(RC, self).__init__()
-        self.inpt_hid1 = nn.Linear(config.input, config.hid)
+        self.conv1 = nn.Conv2d(2, 8, 3, stride=2)
+        self.conv2 =  nn.Conv2d(8, 8, 3, stride=2)
+        
+        self.inpt_hid1 = nn.Linear(392, config.hid)
         self.hid1_hid1 = nn.Linear(config.hid, config.hid) # A1
         self.hid1_hid2 = nn.Linear(config.hid, config.hid)
         self.hid2_hid2 = nn.Linear(config.hid, config.hid) # A2
@@ -167,7 +158,7 @@ class RC(nn.Module):
         
         if not config.input_learn:
             for name, p in self.named_parameters():
-                if 'inpt' in name or 'fc_in' in name:
+                if 'conv1' in name or 'conv2' in name:
                     p.requires_grad = False
     
     def output_Neuron(self, inputs, mem, tau_m, dt=1):
@@ -189,6 +180,7 @@ class RC(nn.Module):
         return mem, spike, B, b
     
     def forward(self, input, mask):
+        input = torch.sign(input.clamp(min=0)) # all pixels should be 0 or 1
         batch = input.shape[0]
         time_step = input.shape[1]
         self.b_hid1 = self.b_hid2 = self.b_out = config.b_j0
@@ -209,10 +201,14 @@ class RC(nn.Module):
             self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * mask[0].T.to(config.device)
             self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * mask[1].T.to(config.device)
         for t in range(time_step):
-            input_t = input[:,t,:].float()
+            input_t = input[:,t,:,:,:].float()
+            ########## Layer 0 ##########
+            x = F.relu(self.conv1(input_t))
+            x = F.relu(self.conv2(x))
+            x = x.view(batch, -1)
             
             ########## Layer 1 ##########
-            inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
+            inpt_hid1 = self.inpt_hid1(x) + self.hid1_hid1(hid1_spk)
             hid1_mem, hid1_spk, theta_h1, self.b_h1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk, self.tau_adp_h1, self.b_hid1,self.tau_m_h1)
             sum1_spk += hid1_spk
             # hid1_spk = self.dp(hid1_spk)
@@ -224,16 +220,16 @@ class RC(nn.Module):
             # hid2_spk = self.dp(hid2_spk)
             
             ########## Layer out ########
-            inpt_out = self.hid2_out(hid2_spk)
-            out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
-            if t > 10:
-                output += F.softmax(out_mem, dim=1)
+            # inpt_out = self.hid2_out(hid2_spk)
+            # out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
+            # if t >= 0:
+            #     output += F.softmax(out_mem, dim=1)
             
         sum1_spk /= time_step
         sum2_spk /= time_step
 
         A_norm = torch.norm(self.hid1_hid1.weight, p=1) + torch.norm(self.hid2_hid2.weight, p=1)
-        return output, sum1_spk, sum2_spk, A_norm
+        return sum2_spk, sum1_spk, sum2_spk, A_norm
 
 ################################################
 ########### define training pipeline ###########
