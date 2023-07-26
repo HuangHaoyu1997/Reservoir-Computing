@@ -1,0 +1,353 @@
+===== Exp configuration =====
+
+neuron_type:		RadLIF
+nb_inputs:		700
+nb_outputs:		20
+nb_layers:		3
+nb_hiddens:		128
+nb_steps:		100
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		07-26-03-20
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/07-26-03-20/
+dataset_name:		shd
+data_folder:		data/raw/
+save_best:		True
+batch_size:		128
+nb_epochs:		50
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=128, bias=False)
+      (V): Linear(in_features=128, out_features=128, bias=False)
+      (norm): BatchNorm1d(128, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RadLIFLayer(
+      (W): Linear(in_features=128, out_features=128, bias=False)
+      (V): Linear(in_features=128, out_features=128, bias=False)
+      (norm): BatchNorm1d(128, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=128, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 142908
+
+------ Begin training ------
+
+Epoch 1: train loss=2.8516532834619284, acc=0.20232888926630435, mean act rate=0.03601447865366936, lr=0.01, time=0:00:43.669791
+Epoch 1: valid loss=1.7305785881148443, acc=0.46409406565656564, mean act rate=0.04165353253483772
+
+Best model saved with valid acc=0.46409406565656564
+
+-----------------------------
+
+Epoch 2: train loss=1.1440250957384706, acc=0.6225373641304348, mean act rate=0.05142289772629738, lr=0.01, time=0:00:40.209829
+Epoch 2: valid loss=1.002428303162257, acc=0.6658775252525253, mean act rate=0.06569167971611023
+
+Best model saved with valid acc=0.6658775252525253
+
+-----------------------------
+
+Epoch 3: train loss=0.7041128454729915, acc=0.764176078464674, mean act rate=0.06404433399438858, lr=0.01, time=0:00:38.466612
+Epoch 3: valid loss=0.6109513739744822, acc=0.797466856060606, mean act rate=0.07065223157405853
+
+Best model saved with valid acc=0.797466856060606
+
+-----------------------------
+
+Epoch 4: train loss=0.4823254900984466, acc=0.8367601477581521, mean act rate=0.0678514614701271, lr=0.01, time=0:00:40.308511
+Epoch 4: valid loss=0.5033442427714666, acc=0.8357796717171717, mean act rate=0.08011141419410706
+
+Best model saved with valid acc=0.8357796717171717
+
+-----------------------------
+
+Epoch 5: train loss=0.3584620824549347, acc=0.8828655740489131, mean act rate=0.08138532191514969, lr=0.01, time=0:00:39.336854
+Epoch 5: valid loss=0.37047646525833344, acc=0.8695943813131313, mean act rate=0.09131526201963425
+
+Best model saved with valid acc=0.8695943813131313
+
+-----------------------------
+
+Epoch 6: train loss=0.2810092477593571, acc=0.9059209408967391, mean act rate=0.09121399372816086, lr=0.01, time=0:00:40.788162
+Epoch 6: valid loss=0.5783401313755248, acc=0.8185369318181819, mean act rate=0.11043893545866013
+
+-----------------------------
+
+Epoch 7: train loss=0.2376648070057854, acc=0.9237378991168479, mean act rate=0.10793808847665787, lr=0.01, time=0:00:30.267691
+Epoch 7: valid loss=0.4074910928805669, acc=0.8648200757575757, mean act rate=0.11287470161914825
+
+-----------------------------
+
+Epoch 8: train loss=0.17402323870919645, acc=0.9441448709239131, mean act rate=0.10950533300638199, lr=0.01, time=0:00:32.199812
+Epoch 8: valid loss=0.4124070306619008, acc=0.8827730429292929, mean act rate=0.11871153116226196
+
+Best model saved with valid acc=0.8827730429292929
+
+-----------------------------
+
+Epoch 9: train loss=0.14358392177382484, acc=0.9549135954483696, mean act rate=0.11139992624521255, lr=0.01, time=0:00:34.835887
+Epoch 9: valid loss=0.5077850239144431, acc=0.8552714646464646, mean act rate=0.11501665413379669
+
+-----------------------------
+
+Epoch 10: train loss=0.1330425810883753, acc=0.9567181131114131, mean act rate=0.11400528997182846, lr=0.01, time=0:00:28.171477
+Epoch 10: valid loss=0.3696819419662158, acc=0.8808001893939393, mean act rate=0.11684814095497131
+
+-----------------------------
+
+Epoch 11: train loss=0.1794534421642311, acc=0.9420696756114131, mean act rate=0.11924729496240616, lr=0.01, time=0:00:27.612052
+Epoch 11: valid loss=0.5657366381751167, acc=0.84146148989899, mean act rate=0.13031195104122162
+
+-----------------------------
+
+Epoch 12: train loss=0.11022225994383916, acc=0.9662395974864131, mean act rate=0.12358983606100082, lr=0.006999999999999999, time=0:00:27.891196
+Epoch 12: valid loss=0.4006630215379927, acc=0.8866792929292929, mean act rate=0.12819930911064148
+
+Best model saved with valid acc=0.8866792929292929
+
+-----------------------------
+
+Epoch 13: train loss=0.09090379578992724, acc=0.9712179432744565, mean act rate=0.12163742631673813, lr=0.006999999999999999, time=0:00:27.942091
+Epoch 13: valid loss=0.49380527271164787, acc=0.8858112373737375, mean act rate=0.12468264997005463
+
+-----------------------------
+
+Epoch 14: train loss=0.07830299585475586, acc=0.9755169412364131, mean act rate=0.12244559824466705, lr=0.006999999999999999, time=0:00:27.940027
+Epoch 14: valid loss=0.3745688555969132, acc=0.8862847222222222, mean act rate=0.12560418248176575
+
+-----------------------------
+
+Epoch 15: train loss=0.0703179348638514, acc=0.9754426375679348, mean act rate=0.12177125364542007, lr=0.006999999999999999, time=0:00:28.045003
+Epoch 15: valid loss=0.5142433163192537, acc=0.8673847853535354, mean act rate=0.12564752995967865
+
+-----------------------------
+
+Epoch 16: train loss=0.053242414665874094, acc=0.9850861922554348, mean act rate=0.1239844411611557, lr=0.004899999999999999, time=0:00:28.259001
+Epoch 16: valid loss=0.3420764042271508, acc=0.8978061868686869, mean act rate=0.12837249040603638
+
+Best model saved with valid acc=0.8978061868686869
+
+-----------------------------
+
+Epoch 17: train loss=0.0445721627183957, acc=0.9863811990489131, mean act rate=0.12535613775253296, lr=0.004899999999999999, time=0:00:28.898408
+Epoch 17: valid loss=0.4730677008628845, acc=0.8775647095959597, mean act rate=0.1292744129896164
+
+-----------------------------
+
+Epoch 18: train loss=0.042165765014942735, acc=0.9873046875, mean act rate=0.12603560090065002, lr=0.004899999999999999, time=0:00:28.896363
+Epoch 18: valid loss=0.3729262716240353, acc=0.8908222853535354, mean act rate=0.13225841522216797
+
+-----------------------------
+
+Epoch 19: train loss=0.03912214472802589, acc=0.9870870838994565, mean act rate=0.12677158415317535, lr=0.004899999999999999, time=0:00:28.050759
+Epoch 19: valid loss=0.5123224473661847, acc=0.877801452020202, mean act rate=0.12975475192070007
+
+-----------------------------
+
+Epoch 20: train loss=0.03181693465739954, acc=0.9919698963994565, mean act rate=0.1259382963180542, lr=0.003429999999999999, time=0:00:27.956422
+Epoch 20: valid loss=0.40527544501754975, acc=0.8975299873737375, mean act rate=0.12908335030078888
+
+-----------------------------
+
+Epoch 21: train loss=0.03148174063244369, acc=0.9901123046875, mean act rate=0.12628798186779022, lr=0.003429999999999999, time=0:00:29.824713
+Epoch 21: valid loss=0.45066118488709134, acc=0.8871133207070707, mean act rate=0.13083519041538239
+
+-----------------------------
+
+Epoch 22: train loss=0.027151099522598088, acc=0.9905528192934783, mean act rate=0.12739042937755585, lr=0.003429999999999999, time=0:00:30.068078
+Epoch 22: valid loss=0.5002496010727353, acc=0.8808001893939393, mean act rate=0.13214416801929474
+
+-----------------------------
+
+Epoch 23: train loss=0.022193083616002696, acc=0.992431640625, mean act rate=0.12730427086353302, lr=0.002400999999999999, time=0:00:28.650996
+Epoch 23: valid loss=0.49508480727672577, acc=0.8873500631313131, mean act rate=0.1316930651664734
+
+-----------------------------
+
+Epoch 24: train loss=0.023314409925660584, acc=0.9925537109375, mean act rate=0.1275460422039032, lr=0.002400999999999999, time=0:00:28.223081
+Epoch 24: valid loss=0.4770796116855409, acc=0.8836805555555556, mean act rate=0.13321711122989655
+
+-----------------------------
+
+Epoch 25: train loss=0.024265711617772467, acc=0.9918212890625, mean act rate=0.12832626700401306, lr=0.002400999999999999, time=0:00:28.398608
+Epoch 25: valid loss=0.5143817216157913, acc=0.8804056186868687, mean act rate=0.13267754018306732
+
+-----------------------------
+
+Epoch 26: train loss=0.014941253335564397, acc=0.99658203125, mean act rate=0.12838278710842133, lr=0.0016806999999999992, time=0:00:28.203605
+Epoch 26: valid loss=0.35201280729638207, acc=0.9013967803030304, mean act rate=0.13258367776870728
+
+Best model saved with valid acc=0.9013967803030304
+
+-----------------------------
+
+Epoch 27: train loss=0.01769520876769093, acc=0.995361328125, mean act rate=0.12836608290672302, lr=0.0016806999999999992, time=0:00:28.135498
+Epoch 27: valid loss=0.3892891224887636, acc=0.8981613005050506, mean act rate=0.13272151350975037
+
+-----------------------------
+
+Epoch 28: train loss=0.019107241110759787, acc=0.994873046875, mean act rate=0.1276894360780716, lr=0.0016806999999999992, time=0:00:28.130982
+Epoch 28: valid loss=0.42628131558497745, acc=0.8935842803030304, mean act rate=0.13156794011592865
+
+-----------------------------
+
+Epoch 29: train loss=0.017563388671987923, acc=0.9947509765625, mean act rate=0.12768496572971344, lr=0.0016806999999999992, time=0:00:28.420498
+Epoch 29: valid loss=0.43711014671458137, acc=0.8892440025252526, mean act rate=0.13333538174629211
+
+-----------------------------
+
+Epoch 30: train loss=0.014566482761438238, acc=0.9964121942934783, mean act rate=0.12859168648719788, lr=0.0011764899999999994, time=0:00:28.011382
+Epoch 30: valid loss=0.443956916530927, acc=0.8881786616161615, mean act rate=0.13394002616405487
+
+-----------------------------
+
+Epoch 31: train loss=0.01435456670151325, acc=0.996337890625, mean act rate=0.1292065680027008, lr=0.0011764899999999994, time=0:00:28.240058
+Epoch 31: valid loss=0.4484195328421063, acc=0.8860085227272727, mean act rate=0.1333409547805786
+
+-----------------------------
+
+Epoch 32: train loss=0.01329848409841361, acc=0.99658203125, mean act rate=0.12890443205833435, lr=0.0011764899999999994, time=0:00:28.257091
+Epoch 32: valid loss=0.4127078238460753, acc=0.8942550505050506, mean act rate=0.1335582733154297
+
+-----------------------------
+
+Epoch 33: train loss=0.014641429126641015, acc=0.99560546875, mean act rate=0.12856633961200714, lr=0.0008235429999999996, time=0:00:28.686622
+Epoch 33: valid loss=0.45168525560034645, acc=0.8838778409090909, mean act rate=0.13179077208042145
+
+-----------------------------
+
+Epoch 34: train loss=0.011377439484931529, acc=0.9971923828125, mean act rate=0.12776120007038116, lr=0.0008235429999999996, time=0:00:29.254677
+Epoch 34: valid loss=0.4421914948357476, acc=0.8960306186868687, mean act rate=0.1325128823518753
+
+-----------------------------
+
+Epoch 35: train loss=0.011576458839954284, acc=0.9971923828125, mean act rate=0.1281673163175583, lr=0.0008235429999999996, time=0:00:28.162766
+Epoch 35: valid loss=0.4443054116434521, acc=0.8879813762626263, mean act rate=0.13280357420444489
+
+-----------------------------
+
+Epoch 36: train loss=0.011159645084262593, acc=0.9971923828125, mean act rate=0.12835487723350525, lr=0.0005764800999999997, time=0:00:28.164822
+Epoch 36: valid loss=0.4432176624735196, acc=0.8949258207070707, mean act rate=0.13283856213092804
+
+-----------------------------
+
+Epoch 37: train loss=0.010082672739372356, acc=0.99755859375, mean act rate=0.1284622699022293, lr=0.0005764800999999997, time=0:00:28.346302
+Epoch 37: valid loss=0.39704736156596077, acc=0.8983980429292929, mean act rate=0.13348311185836792
+
+-----------------------------
+
+Epoch 38: train loss=0.011454886136561981, acc=0.996826171875, mean act rate=0.12869517505168915, lr=0.0005764800999999997, time=0:00:28.279317
+Epoch 38: valid loss=0.4238538791735967, acc=0.8975694444444444, mean act rate=0.13355718553066254
+
+-----------------------------
+
+Epoch 39: train loss=0.011724936241080286, acc=0.9970703125, mean act rate=0.1285783350467682, lr=0.00040353606999999974, time=0:00:27.997417
+Epoch 39: valid loss=0.4235478689273198, acc=0.8995028409090909, mean act rate=0.13322149217128754
+
+-----------------------------
+
+Epoch 40: train loss=0.011282054481853265, acc=0.9969482421875, mean act rate=0.12865711748600006, lr=0.00040353606999999974, time=0:00:28.138866
+Epoch 40: valid loss=0.44435200757450527, acc=0.8905855429292929, mean act rate=0.13345064222812653
+
+-----------------------------
+
+Epoch 41: train loss=0.009774905174708692, acc=0.9981689453125, mean act rate=0.12883056700229645, lr=0.00040353606999999974, time=0:00:28.357602
+Epoch 41: valid loss=0.41271513617701, acc=0.8997395833333334, mean act rate=0.13383178412914276
+
+-----------------------------
+
+Epoch 42: train loss=0.010044834800282842, acc=0.9979248046875, mean act rate=0.12892824411392212, lr=0.0002824752489999998, time=0:00:28.756590
+Epoch 42: valid loss=0.3984108409947819, acc=0.8986347853535354, mean act rate=0.1337345689535141
+
+-----------------------------
+
+Epoch 43: train loss=0.009731699828989804, acc=0.9986572265625, mean act rate=0.12909188866615295, lr=0.0002824752489999998, time=0:00:28.434843
+Epoch 43: valid loss=0.4512336643205749, acc=0.8953598484848485, mean act rate=0.13389649987220764
+
+-----------------------------
+
+Epoch 44: train loss=0.010845492040971294, acc=0.9971923828125, mean act rate=0.12905189394950867, lr=0.0002824752489999998, time=0:00:28.143565
+Epoch 44: valid loss=0.4223404245244132, acc=0.8951625631313131, mean act rate=0.1338854283094406
+
+-----------------------------
+
+Epoch 45: train loss=0.007887424621003447, acc=0.9989013671875, mean act rate=0.12913569808006287, lr=0.00019773267429999984, time=0:00:28.188395
+Epoch 45: valid loss=0.45832963950104183, acc=0.8888494318181819, mean act rate=0.133755624294281
+
+-----------------------------
+
+Epoch 46: train loss=0.008792287151663913, acc=0.9981689453125, mean act rate=0.1291704624891281, lr=0.00019773267429999984, time=0:00:28.310548
+Epoch 46: valid loss=0.43614479237132603, acc=0.893426452020202, mean act rate=0.13363802433013916
+
+-----------------------------
+
+Epoch 47: train loss=0.01019818551321805, acc=0.997802734375, mean act rate=0.12908107042312622, lr=0.00019773267429999984, time=0:00:28.325765
+Epoch 47: valid loss=0.435243406229549, acc=0.8916508838383839, mean act rate=0.13361582159996033
+
+-----------------------------
+
+Epoch 48: train loss=0.009836701802669268, acc=0.9974365234375, mean act rate=0.1288982331752777, lr=0.00013841287200999988, time=0:00:28.178060
+Epoch 48: valid loss=0.429901455839475, acc=0.8960306186868687, mean act rate=0.13359518349170685
+
+-----------------------------
+
+Epoch 49: train loss=0.009644541290072084, acc=0.9972666864809783, mean act rate=0.12890280783176422, lr=0.00013841287200999988, time=0:00:28.215206
+Epoch 49: valid loss=0.4398901305264897, acc=0.8959911616161617, mean act rate=0.13333122432231903
+
+-----------------------------
+
+Epoch 50: train loss=0.008119756434098235, acc=0.9984130859375, mean act rate=0.12890417873859406, lr=0.00013841287200999988, time=0:00:28.184654
+Epoch 50: valid loss=0.4398168573776881, acc=0.8929529671717172, mean act rate=0.1337893307209015
+
+-----------------------------
+
+
+Best valid acc at epoch 26: 0.9013967803030304
+
+
+------ Training finished ------
+
+Loading best model, epoch=26, valid acc=0.9013967803030304
+
+------ Begin Testing ------
+
+Test loss=0.35559387670622933, acc=0.9027383207070707, mean act rate=0.13257159292697906
+
+-----------------------------
+
+
+This dataset uses the same split for validation and testing.
+

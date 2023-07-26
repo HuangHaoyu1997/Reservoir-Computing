@@ -1,0 +1,774 @@
+#
+# SPDX-FileCopyrightText: Copyright © 2022 Idiap Research Institute <contact@idiap.ch>
+#
+# SPDX-FileContributor: Alexandre Bittar <abittar@idiap.ch>
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# This file is part of the sparch package
+#
+"""
+This is where the parser for the model configuration is defined.
+"""
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import time, warnings, errno, os, h5py, logging
+warnings.filterwarnings("ignore")
+from datetime import timedelta
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+logger = logging.getLogger(__name__)
+
+class config:
+    neuron_type = 'RadLIF'      # ["LIF", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU"]
+    nb_inputs = 700
+    nb_outputs = 20
+    nb_layers = 2               # Number of layers (including readout layer).
+    nb_hiddens = 256            # Number of neurons in all hidden layers.
+    nb_steps = 200
+    pdrop = 0.1                 # Dropout rate, must be between 0 and 1.
+    normalization = "batchnorm" # Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.
+    use_bias = False            # Whether to include trainable bias with feed-forward weights.
+    bidirectional = False       # If True, a bidirectional model that scans the sequence in both directions is used, which doubles the size of feed-forward matrices in layers l>0.
+    
+    date = time.strftime("%Y-%m-%d-%H-%M-%S/", time.localtime(time.time()))[5:16]
+    use_pretrained_model = False
+    only_do_testing = False
+    load_exp_folder = None      # Path to experiment folder with a pretrained model to load. Note that the same path will be used to store the current experiment.
+    new_exp_folder = './log/' + date +'/'      # Path to output folder to store experiment.
+    dataset_name = 'shd'        # ["shd", "ssc"]
+    data_folder = "data/raw/"
+    save_best = True
+    batch_size = 128
+    nb_epochs = 50
+    start_epoch = 0             # Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.
+    lr = 1e-2                   # Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.
+    scheduler_patience = 2      # Number of epochs without progress before the learning rate gets decreased.
+    scheduler_factor = 0.7      # Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.
+    use_regularizers = False    # Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.
+    reg_factor = 0.5            # Factor that scales the loss value from the regularizers.
+    reg_fmin = 0.01             # Lowest firing frequency value of spiking neurons for which there is no regularization loss.
+    reg_fmax = 0.1              # Highest firing frequency value of spiking neurons for which there is no regularization loss.
+    use_augm = False            # Whether to use data augmentation or not. Only implemented for non-spiking HD and SC datasets.
+    use_readout_layer = True    # If True, the final layer is a non-spiking, non-recurrent LIF and outputs a cumulative sum of the membrane potential over time. The outputs have shape (batch, labels) with no time dimension. If False, the final layer is the same as the hidden layers and outputs spike trains with shape (batch, time, labels).
+    threshold = 1.0             # Fixed threshold value for the membrane potential.
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+##########################################################
+########### define surrogate gradient function ###########
+class SpikeFunctionBoxcar(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return x.gt(0).float()
+
+    def backward(ctx, grad_spikes):
+        (x,) = ctx.saved_tensors
+        grad_x = grad_spikes.clone()
+        grad_x[x <= -0.5] = 0
+        grad_x[x > 0.5] = 0
+        return grad_x
+
+#######################################
+########### define RC model ###########
+class SNN(nn.Module):
+    """
+    A multi-layered Spiking Neural Network (SNN).
+
+    It accepts input tensors formatted as (batch, time, feat). In the case of
+    4d inputs like (batch, time, feat, channel) the input is flattened as
+    (batch, time, feat*channel).
+
+    The function returns the outputs of the last spiking or readout layer
+    with shape (batch, time, feats) or (batch, feats) respectively, as well
+    as the firing rates of all hidden neurons with shape (num_layers*feats).
+    """
+
+    def __init__(self):
+        super(SNN, self).__init__()
+        # Fixed parameters
+        self.input_shape = (config.batch_size, config.nb_steps, config.nb_inputs)
+        self.layer_sizes = [config.nb_hiddens] * (config.nb_layers - 1) + [config.nb_outputs]
+        self.input_size = float(torch.prod(torch.tensor(self.input_shape[2:])))
+        self.batch_size = self.input_shape[0]
+        self.is_snn = True
+
+        self.snn = self._init_layers()
+
+    def _init_layers(self):
+        snn = nn.ModuleList([])
+        input_size = self.input_size
+        snn_class = config.neuron_type + "Layer"
+
+        if config.use_readout_layer: num_hidden_layers = config.nb_layers - 1
+        else:                        num_hidden_layers = config.nb_layers
+
+        # Hidden layers
+        for i in range(num_hidden_layers):
+            snn.append(globals()[snn_class](input_size=input_size, hidden_size=self.layer_sizes[i],))
+            input_size = self.layer_sizes[i] * (1 + config.bidirectional)
+
+        # Readout layer
+        if config.use_readout_layer:
+            snn.append(ReadoutLayer(input_size=input_size, hidden_size=self.layer_sizes[-1],))
+        return snn
+
+    def forward(self, x):
+        all_spikes = []
+        for i, snn_layer in enumerate(self.snn):
+            x = snn_layer(x)
+            if not (config.use_readout_layer and i == config.nb_layers - 1):
+                all_spikes.append(x)
+
+        firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1)) # Compute mean firing rate of each spiking neuron
+        return x, firing_rates
+
+class LIFLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons without layer-wise recurrent connections (LIF).
+    ---------
+    input_size :    int,   Number of features in the input tensors.
+    hidden_size :   int,   Number of output neurons.
+    batch_size :    int,   Batch size of the input tensors.
+    """
+
+    def __init__(self, input_size, hidden_size,):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=config.use_bias)
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+        nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+
+        self.normalize = False
+        if config.normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif config.normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+        self.drop = nn.Dropout(p=config.pdrop)
+
+    def forward(self, x):
+        # Concatenate flipped sequence on batch dim
+        if config.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+        Wx = self.W(x)
+
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        s = self.mem_update(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if config.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+        s = self.drop(s)
+        return s
+
+    def mem_update(self, Wx):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        s = []
+        # Bound values of the neuron parameters to plausible ranges
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+        for t in range(Wx.shape[1]):
+            ut = alpha * (ut - st) + (1 - alpha) * Wx[:, t, :]
+            st = self.spike_fct(ut - config.threshold)
+            s.append(st)
+        return torch.stack(s, dim=1)
+
+class adLIFLayer(nn.Module):
+    """
+    A single layer of adaptive Leaky Integrate-and-Fire neurons without layer-wise recurrent connections (adLIF).
+    ---------
+    input_size :    int,   Number of features in the input tensors.
+    hidden_size :   int,   Number of output neurons.
+    batch_size :    int,   Batch size of the input tensors.
+    """
+    def __init__(self, input_size, hidden_size,):
+        super().__init__()
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
+        self.beta_lim = [np.exp(-1 / 30), np.exp(-1 / 120)]
+        self.a_lim = [-1.0, 1.0]
+        self.b_lim = [0.0, 2.0]
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=config.use_bias)
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.a = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.b = nn.Parameter(torch.Tensor(self.hidden_size))
+
+        nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+        nn.init.uniform_(self.beta, self.beta_lim[0], self.beta_lim[1])
+        nn.init.uniform_(self.a, self.a_lim[0], self.a_lim[1])
+        nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
+
+        self.normalize = False
+        if config.normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif config.normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        self.drop = nn.Dropout(p=config.pdrop)
+
+    def forward(self, x):
+        # Concatenate flipped sequence on batch dim
+        if config.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+        Wx = self.W(x)
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        s = self.mem_update(Wx)
+        # Concatenate forward and backward sequences on feat dim
+        if config.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        s = self.drop(s)
+        return s
+
+    def mem_update(self, Wx):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        s = []
+
+        # Bound values of the neuron parameters to plausible ranges
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+        beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
+        a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
+        b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+
+        for t in range(Wx.shape[1]):
+            wt = beta * wt + a * ut + b * st
+            ut = alpha * (ut - st) + (1 - alpha) * (Wx[:, t, :] - wt)
+            st = self.spike_fct(ut - config.threshold)
+            s.append(st)
+        return torch.stack(s, dim=1)
+
+class RLIFLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RLIF).
+    ---------
+    input_size :  int, Number of features in the input tensors.
+    hidden_size : int, Number of output neurons.
+    batch_size :  int, Batch size of the input tensors.
+    """
+    def __init__(self, input_size, hidden_size,):
+        super().__init__()
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=config.use_bias)
+        self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+
+        nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+        nn.init.orthogonal_(self.V.weight)
+
+        # Initialize normalization
+        self.normalize = False
+        if config.normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif config.normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+        
+        self.drop = nn.Dropout(p=config.pdrop)
+
+    def forward(self, x):
+        # Concatenate flipped sequence on batch dim
+        if config.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+        Wx = self.W(x)
+
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        s = self.mem_update(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if config.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+        s = self.drop(s)
+        return s
+
+    def mem_update(self, Wx):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        s = []
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1]) # Bound values of the neuron parameters to plausible ranges
+        V = self.V.weight.clone().fill_diagonal_(0) # Set diagonal elements of recurrent matrix to zero
+
+        for t in range(Wx.shape[1]):
+            ut = alpha * (ut - st) + (1 - alpha) * (Wx[:, t, :] + torch.matmul(st, V))
+            st = self.spike_fct(ut - config.threshold)
+            s.append(st)
+        return torch.stack(s, dim=1)
+
+class RadLIFLayer(nn.Module):
+    """
+    A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RadLIF).
+    ---------
+    input_size :  int, Number of features in the input tensors.
+    hidden_size : int, Number of output neurons.
+    batch_size :  int, Batch size of the input tensors.
+    """
+    def __init__(self, input_size, hidden_size,):
+        super().__init__()
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
+        self.beta_lim = [np.exp(-1 / 30), np.exp(-1 / 120)]
+        self.a_lim = [-1.0, 1.0]
+        self.b_lim = [0.0, 2.0]
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=config.use_bias)
+        self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.a = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.b = nn.Parameter(torch.Tensor(self.hidden_size))
+
+        nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+        nn.init.uniform_(self.beta, self.beta_lim[0], self.beta_lim[1])
+        nn.init.uniform_(self.a, self.a_lim[0], self.a_lim[1])
+        nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
+        nn.init.orthogonal_(self.V.weight)
+
+        # Initialize normalization
+        self.normalize = False
+        if config.normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif config.normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+        self.drop = nn.Dropout(p=config.pdrop)
+
+    def forward(self, x):
+        # Concatenate flipped sequence on batch dim
+        if config.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+        Wx = self.W(x)
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        s = self.mem_update(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if config.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        s = self.drop(s)
+        return s
+
+    def mem_update(self, Wx):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        s = []
+
+        # Bound values of the neuron parameters to plausible ranges
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+        beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
+        a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
+        b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+
+        V = self.V.weight.clone().fill_diagonal_(0) # Set diagonal elements of recurrent matrix to zero
+        for t in range(Wx.shape[1]):
+            wt = beta * wt + a * ut + b * st
+            ut = alpha * (ut - st) + (1 - alpha) * (Wx[:, t, :] + torch.matmul(st, V) - wt)
+            st = self.spike_fct(ut - config.threshold)
+            s.append(st)
+        return torch.stack(s, dim=1)
+
+class ReadoutLayer(nn.Module):
+    """
+    This function implements a single layer of non-spiking Leaky Integrate and
+    Fire (LIF) neurons, where the output consists of a cumulative sum of the
+    membrane potential using a softmax function, instead of spikes.
+    ---------
+    input_size :  int,   Feature dimensionality of the input tensors.
+    hidden_size : int,   Number of output neurons.
+    batch_size :  int,   Batch size of the input tensors.
+    """
+    def __init__(self, input_size, hidden_size, ):
+        super().__init__()
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=config.use_bias)
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+        nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+
+        # Initialize normalization
+        self.normalize = False
+        if config.normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif config.normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+        
+        self.drop = nn.Dropout(p=config.pdrop)
+
+    def forward(self, x):
+        Wx = self.W(x)
+
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        out = self.mem_update(Wx) # Compute membrane potential via non-spiking neuron dynamics
+        return out
+
+    def mem_update(self, Wx):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
+        out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(config.device)
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+
+        for t in range(Wx.shape[1]):
+            ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
+            out = out + F.softmax(ut, dim=1)
+        return out
+
+class SpikingDataset(Dataset):
+    """
+    Dataset class for the Spiking Heidelberg Digits (SHD) or
+    Spiking Speech Commands (SSC) dataset.
+    ---------
+    data_folder : str, Path to folder containing the dataset (h5py file).
+    split : str, Split of the SHD dataset, must be either "train" or "test".
+    """
+
+    def __init__(self, split,):
+        self.device = "cpu"  # to allow pin memory
+        self.max_time = 1.4
+        self.time_bins = np.linspace(0, self.max_time, num=config.nb_steps)
+
+        # Read data from h5py file
+        filename = f"{config.data_folder}/{config.dataset_name}_{split}.h5"
+        self.h5py_file = h5py.File(filename, "r")
+        self.firing_times = self.h5py_file["spikes"]["times"]
+        self.units_fired = self.h5py_file["spikes"]["units"]
+        self.labels = np.array(self.h5py_file["labels"], dtype=np.int)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        times = np.digitize(self.firing_times[index], self.time_bins)
+        units = self.units_fired[index]
+
+        x_idx = torch.LongTensor(np.array([times, units])).to(self.device)
+        x_val = torch.FloatTensor(np.ones(len(times))).to(self.device)
+        x_size = torch.Size([config.nb_steps, config.nb_inputs])
+
+        x = torch.sparse.FloatTensor(x_idx, x_val, x_size).to(self.device)
+        y = self.labels[index]
+
+        return x.to_dense(), y
+
+    def generateBatch(self, batch):
+        xs, ys = zip(*batch)
+        xs = torch.nn.utils.rnn.pad_sequence(xs, batch_first=True)
+        xlens = torch.tensor([x.shape[0] for x in xs])
+        ys = torch.LongTensor(ys).to(self.device)
+        return xs, xlens, ys
+
+def load_shd_or_ssc(split, shuffle=True, workers=0,):
+    """
+    This function creates a dataloader for a given split of the SHD or SSC datasets.
+    ---------
+    split : str, Split of dataset, must be either "train" or "test" for SHD. "train", "valid" or "test" for SSC.
+    """
+    if config.dataset_name not in ["shd", "ssc"]: raise ValueError(f"Invalid dataset name {config.dataset_name}")
+    if split not in ["train", "valid", "test"]:   raise ValueError(f"Invalid split name {split}")
+    if config.dataset_name == "shd" and split == "valid":
+        logging.info("SHD does not have a validation split. Using test split.")
+        split = "test"
+
+    dataset = SpikingDataset(split)
+    logging.info(f"Number of examples in {split} set: {len(dataset)}")
+
+    loader = DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        collate_fn=dataset.generateBatch,
+        shuffle=shuffle,
+        num_workers=workers,
+        pin_memory=True,
+    )
+    return loader
+
+class Experiment:
+    """
+    Training and testing models (ANNs and SNNs) on all four datasets for speech command recognition (shd, ssc, hd and sc).
+    """
+    def __init__(self):
+        # Initialize logging and output folders
+        self.init_exp_folders()
+        logging.FileHandler(filename=self.log_dir + "exp.log", mode="a", encoding=None, delay=False,)
+        logging.basicConfig(filename=self.log_dir + "exp.log", level=logging.INFO, format="%(message)s", filemode='a',)
+        logging.info("===== Exp configuration =====\n")
+        for var in vars(config):
+            if var[0] != '_': 
+                logging.info(str(var) + ':\t\t' + str(vars(config)[var]))
+
+        logging.info(f"\nDevice is set to {config.device}\n")
+
+        # Initialize dataloaders and model
+        self.init_dataset()
+        self.init_model()
+
+        self.optimizer = torch.optim.Adam(self.net.parameters(), config.lr)
+        self.scheduler = ReduceLROnPlateau(
+            optimizer=self.optimizer,
+            mode="max",
+            factor=config.scheduler_factor,
+            patience=config.scheduler_patience,
+            min_lr=1e-6,
+        )
+        self.loss_fn = nn.CrossEntropyLoss()
+
+    def forward(self):
+        if not config.only_do_testing:
+            # Initialize best accuracy
+            if config.use_pretrained_model:
+                logging.info("\n------ Using pretrained model ------\n")
+                best_epoch, best_acc = self.valid_one_epoch(config.start_epoch, 0, 0)
+            else:
+                best_epoch, best_acc = 0, 0
+
+            # Loop over epochs (training + validation)
+            logging.info("\n------ Begin training ------\n")
+
+            for e in range(best_epoch + 1, best_epoch + config.nb_epochs + 1):
+                self.train_one_epoch(e)
+                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
+
+            logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
+            logging.info("\n------ Training finished ------\n")
+
+            # Loading best model
+            if config.save_best:
+                self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=config.device)
+                logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
+            else:
+                logging.info("Cannot load best model because save_best option is disabled. Model from last epoch is used for testing.")
+
+        # Test trained model
+        if config.dataset_name in ["sc", "ssc"]:
+            self.test_one_epoch(self.test_loader)
+        else:
+            self.test_one_epoch(self.valid_loader)
+            logging.info("\nThis dataset uses the same split for validation and testing.\n")
+
+    def init_exp_folders(self):
+        """define the output folders for the experiment."""
+        # Check if path exists for loading pretrained model
+        if config.use_pretrained_model:
+            exp_folder = config.load_exp_folder
+            self.load_path = exp_folder + "/checkpoints/best_model.pth"
+            if not os.path.exists(self.load_path):
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), self.load_path)
+
+        # Use given path for new model folder
+        elif config.new_exp_folder is not None: exp_folder = config.new_exp_folder
+
+        # Generate a path for new model from chosen config
+        else:
+            outname = config.dataset_name + "_" + config.neuron_type + "_"
+            outname += str(config.nb_layers) + "lay" + str(config.nb_hiddens)
+            outname += "_drop" + str(config.pdrop) + "_" + str(config.normalization)
+            outname += "_bias" if config.use_bias else "_nobias"
+            outname += "_bdir" if config.bidirectional else "_udir"
+            outname += "_reg" if config.use_regularizers else "_noreg"
+            outname += "_lr" + str(config.lr)
+            exp_folder = "exp/test_exps/" + outname.replace(".", "_")
+
+        # For a new model check that out path does not exist
+        if not config.use_pretrained_model and os.path.exists(exp_folder):
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), exp_folder)
+        
+        # Create folders to store experiment
+        self.log_dir = exp_folder + "/log/"
+        self.checkpoint_dir = exp_folder + "/checkpoints/"
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        if not os.path.exists(self.checkpoint_dir):
+            os.makedirs(self.checkpoint_dir)
+
+        self.exp_folder = exp_folder
+
+    def init_dataset(self):
+        """This function prepares dataloaders for the desired dataset."""
+        if config.dataset_name in ["shd", "ssc"]:
+            self.train_loader = load_shd_or_ssc(split="train", shuffle=True,)
+            self.valid_loader = load_shd_or_ssc(split="valid", shuffle=False,)
+            if config.dataset_name == "ssc":
+                self.test_loader = load_shd_or_ssc(split="test", shuffle=False,)
+            if config.use_augm:
+                logging.warning("\nWarning: Data augmentation not implemented for SHD and SSC.\n")
+
+    def init_model(self):
+        if config.use_pretrained_model:
+            self.net = torch.load(self.load_path, map_location=config.device)
+            logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
+
+        elif config.neuron_type in ["LIF", "adLIF", "RLIF", "RadLIF"]:
+            self.net = SNN().to(config.device)
+            logging.info(f"\nCreated new spiking model:\n {self.net}\n")
+
+        self.nb_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        logging.info(f"Total number of trainable parameters is {self.nb_params}")
+
+    def train_one_epoch(self, e):
+        start = time.time()
+        self.net.train()
+        losses, accs, epoch_spike_rate = [], [], 0
+
+        for step, (x, _, y) in enumerate(self.train_loader):
+            x = x.to(config.device)
+            y = y.to(config.device)
+            output, firing_rates = self.net(x)
+            loss_val = self.loss_fn(output, y)
+            losses.append(loss_val.item())
+
+            # Spike activity
+            if self.net.is_snn:
+                epoch_spike_rate += torch.mean(firing_rates)
+                if config.use_regularizers:
+                    reg_quiet = F.relu(config.reg_fmin - firing_rates).sum()
+                    reg_burst = F.relu(firing_rates - config.reg_fmax).sum()
+                    loss_val += config.reg_factor * (reg_quiet + reg_burst)
+
+            self.optimizer.zero_grad()
+            loss_val.backward()
+            self.optimizer.step()
+
+            pred = torch.argmax(output, dim=1)
+            acc = np.mean((y == pred).detach().cpu().numpy())
+            accs.append(acc)
+
+        # Learning rate of whole epoch
+        current_lr = self.optimizer.param_groups[-1]["lr"]
+        train_loss = np.mean(losses)
+        train_acc = np.mean(accs)
+        if self.net.is_snn: epoch_spike_rate /= step
+        elapsed = str(timedelta(seconds=time.time() - start))
+        logging.info(f"Epoch {e}: train loss={train_loss}, acc={train_acc}, mean act rate={epoch_spike_rate}, lr={current_lr}, time={elapsed}")
+
+    def valid_one_epoch(self, e, best_epoch, best_acc):
+        with torch.no_grad():
+            self.net.eval()
+            losses, accs, epoch_spike_rate = [], [], 0
+
+            for step, (x, _, y) in enumerate(self.valid_loader):
+                x = x.to(config.device)
+                y = y.to(config.device)
+                output, firing_rates = self.net(x)
+
+                loss_val = self.loss_fn(output, y)
+                losses.append(loss_val.item())
+
+                pred = torch.argmax(output, dim=1)
+                acc = np.mean((y == pred).detach().cpu().numpy())
+                accs.append(acc)
+
+                if self.net.is_snn: epoch_spike_rate += torch.mean(firing_rates)
+
+            valid_loss = np.mean(losses)
+            valid_acc = np.mean(accs)
+            if self.net.is_snn: epoch_spike_rate /= step
+            logging.info(f"Epoch {e}: valid loss={valid_loss}, acc={valid_acc}, mean act rate={epoch_spike_rate}")
+
+            self.scheduler.step(valid_acc)
+
+            # Update best epoch and accuracy
+            if valid_acc > best_acc:
+                best_acc = valid_acc
+                best_epoch = e
+                # Save best model
+                torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
+                logging.info(f"\nBest model saved with valid acc={valid_acc}")
+
+            logging.info("\n-----------------------------\n")
+            return best_epoch, best_acc
+
+    def test_one_epoch(self, test_loader):
+        with torch.no_grad():
+            self.net.eval()
+            losses, accs, epoch_spike_rate = [], [], 0
+
+            logging.info("\n------ Begin Testing ------\n")
+            for step, (x, _, y) in enumerate(test_loader):
+                x = x.to(config.device)
+                y = y.to(config.device)
+                output, firing_rates = self.net(x)
+
+                # Compute loss
+                loss_val = self.loss_fn(output, y)
+                losses.append(loss_val.item())
+
+                # Compute accuracy with labels
+                pred = torch.argmax(output, dim=1)
+                acc = np.mean((y == pred).detach().cpu().numpy())
+                accs.append(acc)
+
+                if self.net.is_snn: epoch_spike_rate += torch.mean(firing_rates)
+
+            test_loss = np.mean(losses)
+            test_acc = np.mean(accs)
+            if self.net.is_snn: epoch_spike_rate /= step
+            logging.info(f"Test loss={test_loss}, acc={test_acc}, mean act rate={epoch_spike_rate}")
+            logging.info("\n-----------------------------\n")
+if __name__ == "__main__":
+    experiment = Experiment()
+    experiment.forward()

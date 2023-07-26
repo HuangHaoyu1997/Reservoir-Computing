@@ -22,3 +22,4 @@ data/cifar-100-python/file.txt~
 *.npy
 *.pth
 *.npz
+*.h5

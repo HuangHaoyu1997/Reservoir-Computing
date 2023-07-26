@@ -1,5 +1,5 @@
 '''
-首次修改2023年7月13日22:10:55
+首次修改2023年7月12日23:59:14
 
 '''
 import os
@@ -10,20 +10,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time, warnings
 warnings.filterwarnings("ignore")
-# from utils import A_cluster
+from torch.optim.lr_scheduler import StepLR
 from tqdm.auto import tqdm
-from torchvision import transforms, datasets
-from copy import deepcopy
-from spikingjelly.datasets.n_mnist import NMNIST
-
 
 class config:
     date = time.strftime("%Y-%m-%d-%H-%M-%S/", time.localtime(time.time()))[5:16]
     save_dir = './log/' + date
-        
+    seed = 20
     input = 700
-    output = 10
-    hid = 300         # number of RC Neurons
+    hid = 128         # number of RC Neurons
+    output = 20
+    time_step = 250  # Number of steps to unroll
+    
     thr = 0.5
     b_j0 = 0.01       # thr baseline
     dt = 1
@@ -32,51 +30,27 @@ class config:
     rst = 0.05
     lens = 0.5
     gamma = 0.5       # gradient scale 
-    gradient_type = 'G' # 'MG', 'slayer', 'linear' 窗型函数
+    gradient_type = 'MG' # 'G', 'slayer', 'linear' 窗型函数
     scale = 6.        # special for 'MG'
     hight = 0.15      # special for 'MG'
-
-    N_hid = hid
-    p_in = 0.2        # ratio of inhibitory neurons
-    # gamma = 1.0       # shape factor of gamma distribution
-    binary = True    # binary matrix of reservoir A
-    net_type = 'BAC'  # type of reservoir connection topology
-                      # 'ER',  # Erdos-Renyi Random Network
-                      # 'ERC', # Clusters of Erdos-Renyi Networks
-                      # 'BA',  # Barabasi-Albert Network
-                      # 'BAC', # Clusters of Barabasi-Albert networks
-                      # 'WS',  # Watts Strogatz small world networks
-                      # 'WSC', # Clusters of Watts Strogatz small world networks
-                      # 'RAN', # random network
-                      # 'DTW', # Developmental Time Window for multi-cluster small-world network
-    noise = True      # add noise in A
-    noise_str = 0.05  # noise strength
-    p_ER = 0.2        # connection probability when creating edges, for ER and WS graphs
-    m_BA = 3          # number of edges to attach from a new node to existing nodes
-    k = 5             # number of clusters in A
-    R = 0.2           # distance factor when deciding connections in random network
-    scale = False     # rescale matrix A with spectral radius
-    
-    input_learn = False # learnable input layer
-    seed = 123
+    input_learn = True # learnable input layer
+    epoch = 50
     trials = 5        # try on 5 different seeds
-    batch = 512
-    epoch = 100
-    lr = 0.02
-    l1 = 0.0003
+    batch = 256
+    lr = 1e-2
+    l1 = 0.0000 # 0.0003
     l1_targ = 2000
-    fr_norm = 0.01
-    fr_targ = 0.05
+    fr_norm = 0.005
+    fr_targ = 0.06
     dropout = 0.75
-    dropout_stepping = 0.02
-    dropout_stop = 0.98
+    dropout_stepping = 0.04
+    dropout_stop = 0.95
     weight_decay = 1e-4
-    label_smoothing = False
-    smoothing = 0.15
-    noise_test = 0.1
+    smoothing = 0.1
+    noise_test = 0.0
     norm = False      # add layer norm before each layer
     shortcut = False
-    small_init = True
+    small_init = False
     ckpt_freq = 10    # every 10 epoch save model
     device = torch.device('cuda')
 
@@ -95,7 +69,6 @@ class ActFun_adp(torch.autograd.Function):
     def backward(ctx, grad_output):  # approximate the gradients
         input, = ctx.saved_tensors
         grad_input = grad_output.clone()
-        # temp = abs(input) < lens
         if config.gradient_type == 'G':
             temp = torch.exp(-(input**2)/(2*config.lens**2))/torch.sqrt(2*torch.tensor(torch.pi))/config.lens
         elif config.gradient_type == 'MG':
@@ -115,10 +88,7 @@ act_fun_adp = ActFun_adp.apply
 class RC(nn.Module):
     def __init__(self):
         super(RC, self).__init__()
-        self.conv1 = nn.Conv2d(2, 8, 3, stride=2)
-        self.conv2 =  nn.Conv2d(8, 8, 3, stride=2)
-        
-        self.inpt_hid1 = nn.Linear(392, config.hid)
+        self.inpt_hid1 = nn.Linear(config.input, config.hid)
         self.hid1_hid1 = nn.Linear(config.hid, config.hid) # A1
         self.hid1_hid2 = nn.Linear(config.hid, config.hid)
         self.hid2_hid2 = nn.Linear(config.hid, config.hid) # A2
@@ -127,7 +97,7 @@ class RC(nn.Module):
             self.hid1_hid1.weight.data = 0.2 * self.hid1_hid1.weight.data
             self.hid2_hid2.weight.data = 0.2 * self.hid2_hid2.weight.data
         
-        nn.init.orthogonal_(self.inpt_hid1.weight)  # 主要用以解决深度网络的梯度消失爆炸问题，在RNN中经常使用
+        nn.init.orthogonal_(self.hid1_hid1.weight)  # 主要用以解决深度网络的梯度消失爆炸问题，在RNN中经常使用
         nn.init.orthogonal_(self.hid2_hid2.weight)
         nn.init.xavier_uniform_(self.inpt_hid1.weight) # 保持输入输出的方差一致，避免所有输出值都趋向于0。通用方法，适用于任何激活函数
         nn.init.xavier_uniform_(self.hid1_hid2.weight)
@@ -144,20 +114,19 @@ class RC(nn.Module):
         self.tau_m_h1 = nn.Parameter(torch.Tensor(config.hid))
         self.tau_m_h2 = nn.Parameter(torch.Tensor(config.hid))
         self.tau_m_o = nn.Parameter(torch.Tensor(config.output))
-        
+
         nn.init.normal_(self.tau_adp_h1, 150, 10)
         nn.init.normal_(self.tau_adp_h2, 150, 10)
         nn.init.normal_(self.tau_adp_o, 150, 10)
         nn.init.normal_(self.tau_m_h1, 20., 5)
         nn.init.normal_(self.tau_m_h2, 20., 5)
         nn.init.normal_(self.tau_m_o, 20., 5)
-        
-        self.b_hid1 = self.b_hid2 = self.b_o = 0
-        self.dp = nn.Dropout(0.1)
+
+        self.b_hid1 = self.b_hid2 = self.b_out = 0
         
         if not config.input_learn:
             for name, p in self.named_parameters():
-                if 'conv1' in name or 'conv2' in name:
+                if 'inpt' in name:
                     p.requires_grad = False
     
     def output_Neuron(self, inputs, mem, tau_m, dt=1):
@@ -179,80 +148,77 @@ class RC(nn.Module):
         return mem, spike, B, b
     
     def forward(self, input, mask):
-        batch = input.shape[0]
-        time_step = input.shape[1]
+        batch, time_step, _ = input.shape
         self.b_hid1 = self.b_hid2 = self.b_out = config.b_j0
         
-        hid1_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(config.device)
+        hid1_mem = torch.rand(batch, config.hid).to(config.device)
         hid1_spk = torch.zeros(batch, config.hid).to(config.device)
         
-        hid2_mem = torch.zeros(batch, config.hid).uniform_(0, 0.1).to(config.device)
+        hid2_mem = torch.rand(batch, config.hid).to(config.device)
         hid2_spk = torch.zeros(batch, config.hid).to(config.device)
         
-        out_mem = torch.zeros(batch, config.output).uniform_(0, 0.1).to(config.device)
+        out_mem = torch.rand(batch, config.output).to(config.device)
         output = torch.zeros(batch, config.output).to(config.device)
         
         sum1_spk = torch.zeros(batch, config.hid).to(config.device)
         sum2_spk = torch.zeros(batch, config.hid).to(config.device)
         
-        if config.dropout>0:
+        if config.dropout > 0:
             self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * mask[0].T
             self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * mask[1].T
         for t in range(time_step):
-            input_t = input[:,t,:,:,:].float()
-            ########## Layer 0 ##########
-            x = F.relu(self.conv1(input_t))
-            x = F.relu(self.conv2(x))
-            x = x.view(batch, -1)
-            
+            input_t = input[:,t,:].float()
             ########## Layer 1 ##########
-            inpt_hid1 = self.inpt_hid1(x) + self.hid1_hid1(hid1_spk)
-            hid1_mem, hid1_spk, theta_h1, self.b_h1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk, self.tau_adp_h1, self.b_hid1,self.tau_m_h1)
+            inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
+            hid1_mem, hid1_spk, theta_h1, self.b_hid1 = self.mem_update_adp(inpt_hid1, hid1_mem, hid1_spk, self.tau_adp_h1, self.b_hid1, self.tau_m_h1)
             sum1_spk += hid1_spk
             # hid1_spk = self.dp(hid1_spk)
             
             ########## Layer 2 ##########
-            # inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
-            # hid2_mem, hid2_spk, theta_h2, self.b_h2 = self.mem_update_adp(inpt_hid2, hid2_mem, hid2_spk, self.tau_adp_h2, self.b_hid2,self.tau_m_h2)
-            # sum2_spk += hid2_spk
+            inpt_hid2 = self.hid1_hid2(hid1_spk) + self.hid2_hid2(hid2_spk)
+            hid2_mem, hid2_spk, theta_h2, self.b_hid2 = self.mem_update_adp(inpt_hid2, hid2_mem, hid2_spk, self.tau_adp_h2, self.b_hid2, self.tau_m_h2)
+            sum2_spk += hid2_spk
             # hid2_spk = self.dp(hid2_spk)
             
             ########## Layer out ########
-            inpt_out = self.hid2_out(hid1_spk)
-            output += inpt_out
-            # out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
-            # if t >= 0:
-            #     output += F.softmax(out_mem, dim=1)
+            inpt_out = self.hid2_out(hid2_spk)
+            out_mem = self.output_Neuron(inpt_out, out_mem, self.tau_m_o)
+            if t > 10:
+                output += F.softmax(out_mem, dim=1)
             
         sum1_spk /= time_step
-        # sum2_spk /= time_step
-        output /= time_step
+        sum2_spk /= time_step
 
-        A_norm = torch.norm(self.hid1_hid1.weight, p=1) # + torch.norm(self.hid2_hid2.weight, p=1)
-        
-        cluster_in = 0 # 簇内聚类程度
-        cluster_out = 0
-        global_mean = 0 # 全局中心位置
-        for i in range(config.output):
-            center = self.hid1_hid1.weight[i*30:(i+1)*30].mean(0)
-            cluster_in += ((self.hid1_hid1.weight[i*30:(i+1)*30] - center)**2).mean()
-            global_mean += 0.1*center
-        for i in range(config.output):
-            d = ((global_mean - self.hid1_hid1.weight[i*30:(i+1)*30].mean(0))**2).mean()
-            cluster_out += d
-            # print(a[0,0:5], b[0:5], c[0,0:5], (c**2)[0,0:5])
-        # print(cluster_in, cluster_out)
-        return output, sum1_spk, sum1_spk, A_norm, cluster_in, cluster_out
+        A_norm = torch.norm(self.hid1_hid1.weight, p=1) + torch.norm(self.hid2_hid2.weight, p=1)
+        # cluster_in1 = 0 # 簇内聚类程度
+        # cluster_out1 = 0
+        # global_mean1 = 0 # 全局中心位置
+        # cluster_in2 = 0 # 簇内聚类程度
+        # cluster_out2 = 0
+        # global_mean2 = 0 # 全局中心位置
+        # for i in range(config.output):
+        #     center1 = self.hid1_hid1.weight[i*20:(i+1)*20].mean(0)
+        #     cluster_in1 += ((self.hid1_hid1.weight[i*20:(i+1)*20] - center1)**2).mean()
+        #     global_mean1 += 0.1*center1
+        #     center2 = self.hid2_hid2.weight[i*20:(i+1)*20].mean(0)
+        #     cluster_in2 += ((self.hid2_hid2.weight[i*20:(i+1)*20] - center2)**2).mean()
+        #     global_mean2 += 0.1*center2
+        # for i in range(config.output):
+        #     cluster_out1 += ((global_mean1 - self.hid1_hid1.weight[i*20:(i+1)*20].mean(0))**2).mean()
+        #     cluster_out2 += ((global_mean2 - self.hid2_hid2.weight[i*20:(i+1)*20].mean(0))**2).mean()
+
+        return output, sum1_spk, sum2_spk, A_norm, 0,0 # cluster_in1+cluster_in2, cluster_out1+cluster_out2
 
 ################################################
 ########### define training pipeline ###########
 def train(trial, model, optimizer, criterion, num_epochs, train_loader, test_loader):
+    scheduler = StepLR(optimizer, step_size=10, gamma=.5)
     model.train()
     train_accs, test_accs = [], []
-
+    best_accuracy = 85
     a = torch.zeros((config.hid, config.hid), dtype=torch.int)
-    for i in range(config.output):
-        a[i*30:(i+1)*30, i*30:(i+1)*30] = 1.
+    for i in range(4):
+        a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
     invalid_zeros = 1-(a==1).sum().item()/config.hid**2
     if invalid_zeros < config.dropout:
         b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
@@ -260,22 +226,29 @@ def train(trial, model, optimizer, criterion, num_epochs, train_loader, test_loa
         m1 += torch.eye(config.hid, config.hid, dtype=int)
     else: m1 = a
     # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+    a = torch.zeros((config.hid, config.hid), dtype=torch.int)
+    for i in range(4):
+        a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
+    invalid_zeros = 1-(a==1).sum().item()/config.hid**2
+    if invalid_zeros < config.dropout:
+        b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
+        m2 = a & b
+        m2 += torch.eye(config.hid, config.hid, dtype=int)
+    else: m2 = a
+    # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
     mask = [m1.float().to(config.device), m2.float().to(config.device)]
-    
     torch.save([model.state_dict(), mask], config.save_dir+'/before-train-{:d}-{:d}-{:.2f}.tar'.format(trial, 0, 0))
     
     for epoch in range(num_epochs):
         now = time.time()
+        loss_sum = 0
         correct, total = 0, 0
-        for i, (samples, labels) in enumerate(tqdm(train_loader)): # 
-            # samples = samples.requires_grad_().to(device)
+        for i, (images, labels) in enumerate(tqdm(train_loader)):
+            images = images.view(-1, config.time_step, config.input).requires_grad_().to(config.device)
             labels = labels.long().to(config.device)
             optimizer.zero_grad()
             
-            
-            samples = torch.sign(samples.clamp(min=0)) # all pixels should be 0 or 1
-            outputs, sum1_spk, sum2_spk, A_norm, cluster_in, cluster_out = model(samples.to(config.device), mask)
+            outputs, sum1_spk, sum2_spk, A_norm, cluster_in, cluster_out = model(images.requires_grad_().to(config.device), mask)
             firing_rate = sum1_spk.mean()*0.5 + sum2_spk.mean()*0.5
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
@@ -293,40 +266,41 @@ def train(trial, model, optimizer, criterion, num_epochs, train_loader, test_loa
                 loss = criterion(outputs, labels)
             
             loss = loss + config.fr_norm * F.relu(firing_rate - config.fr_targ) + \
-                    (0.02*cluster_in - 0.04*cluster_out) + \
                     config.l1 * F.relu(A_norm - config.l1_targ) # , torch.max(A_norm-6000, 0) 规定一个区间，
+                    # (0.02*cluster_in - 0.04*cluster_out) + \
+            loss_sum += loss.item()
             loss.backward()
             optimizer.step()
+        scheduler.step()
         tr_acc = 100. * correct.numpy() / total
         ts_acc = test(model, test_loader, mask)
+        if ts_acc > best_accuracy and tr_acc > 85:
+            torch.save([model.state_dict(), mask], config.save_dir+'/bestmodel-{:d}-{:d}-{:.2f}.tar'.format(trial, epoch, ts_acc))
+            best_accuracy = ts_acc
         train_accs.append(tr_acc)
         test_accs.append(ts_acc)
-        # res_str = 'epoch: ' + str(epoch) \
-        #             + ' Loss: ' + str(loss.item())      \
-        #             + '. Tr Acc: ' + str(tr_acc)        \
-        #             + '. Ts Acc: ' + str(ts_acc)        \
-        #             + '. Time:' + str(time.time()-now)  \
-        #             + '. A norm:' + str(A_norm.item())
+
         print('epoch:%d, Loss:%.4f, Tr Acc:%.4f, Ts Acc:%.2f, Time:%.4f,\tA Norm:%.4f,\tFr:%.4f, Mask:%.4f, Cin:%.4f, Cout:%.4f'%\
-            (epoch, loss.item(), tr_acc, ts_acc, time.time()-now, A_norm.item(), firing_rate, (m1==0).sum().item()/config.hid**2, cluster_in.item(), cluster_out.item()))
+            (epoch, loss.item(), tr_acc, ts_acc, time.time()-now, A_norm.item(), firing_rate, (m1==0).sum().item()/config.hid**2, cluster_in, cluster_out))
         if epoch % config.ckpt_freq==0:
             torch.save([model.state_dict(), mask], config.save_dir+'/model-{:d}-{:d}-{:.2f}.tar'.format(trial, epoch, ts_acc))
         
-        if (m1==0).sum().item()/config.hid**2 <= config.dropout_stop: # or (m2==0).sum().item()/config.hid**2 <= config.dropout_stop:
+        if (m1==0).sum().item()/config.hid**2 <= config.dropout_stop or \
+            (m2==0).sum().item()/config.hid**2 <= config.dropout_stop:
             m1 = m1&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
             m2 = m2&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
             mask = [m1.float().to(config.device), m2.float().to(config.device)]
     return np.array(train_accs), np.array(test_accs)
 
 def test(model, dataloader, mask):
-    model.eval()
+    # model.eval()
     with torch.no_grad():
         correct, total = 0, 0
         for images, labels in dataloader:
-            images = torch.sign(images.clamp(min=0)) # all pixels should be 0 or 1
-            if config.noise_test>0:
+            images = images.view(-1, config.time_step, config.input).to(config.device)
+            if config.noise_test > 0:
                 images += torch.rand_like(images) * config.noise_test
-            outputs, _, _, _, _, _ = model(images.to(config.device), mask)
+            outputs, _, _, _, _, _ = model(images, mask)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
@@ -346,10 +320,10 @@ def multiple_trial():
 
         model = RC().to(config.device)
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, weight_decay=config.weight_decay)
+        # optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, weight_decay=config.weight_decay)
         # optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr)
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, eps=1e-5)
         train_acc, test_acc = train(i, model, optimizer, criterion, config.epoch, train_loader, test_loader)
-        
         train_acc_log[:,i] = train_acc
         test_acc_log[:,i] = test_acc
     return train_acc_log, test_acc_log
@@ -381,17 +355,30 @@ def plot_errorbar(train_acc_log, test_acc_log, file_name):
     plt.savefig(file_name)
     # plt.show()
 
-
 ###################################
 ########### start train ###########
 if __name__ == "__main__":
     os.makedirs(config.save_dir) if not os.path.exists(config.save_dir) else None
     #####################################
     ########### load SHD data ###########
-    nmnist_train = NMNIST('./data/', train=True, data_type='frame', frames_number=10, split_by='number')
-    nmnist_test = NMNIST('./data/', train=False, data_type='frame', frames_number=10, split_by='number')
-    train_loader = torch.utils.data.DataLoader(dataset=nmnist_train, batch_size=config.batch, shuffle=True, drop_last=False, num_workers=0)
-    test_loader = torch.utils.data.DataLoader(dataset=nmnist_test, batch_size=config.batch, shuffle=False, drop_last=False, num_workers=0)
-    
+
+    train_X = np.load('data/trainX_4ms.npy')
+    train_y = np.load('data/trainY_4ms.npy').astype(float)
+
+    test_X = np.load('data/testX_4ms.npy')
+    test_y = np.load('data/testY_4ms.npy').astype(float)
+
+    print('dataset shape: ', train_X.shape)
+    print('dataset shape: ', test_X.shape)
+
+    tensor_trainX = torch.Tensor(train_X)  # transform to torch tensor
+    tensor_trainY = torch.Tensor(train_y)
+    train_dataset = torch.utils.data.TensorDataset(tensor_trainX, tensor_trainY)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
+    tensor_testX = torch.Tensor(test_X)  # transform to torch tensor
+    tensor_testY = torch.Tensor(test_y)
+    test_dataset = torch.utils.data.TensorDataset(tensor_testX, tensor_testY)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch, shuffle=False)
+
     train_acc_log, test_acc_log = multiple_trial()
-    plot_errorbar(train_acc_log, test_acc_log, './fig/'+ config.save_dir +'.pdf')
+    plot_errorbar(train_acc_log, test_acc_log, './fig/'+ config.date +'.pdf')
