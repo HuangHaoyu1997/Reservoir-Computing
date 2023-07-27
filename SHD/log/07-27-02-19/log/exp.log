@@ -1,0 +1,61 @@
+===== Exp configuration =====
+neuron_type:		RadLIF
+nb_inputs:		700
+nb_outputs:		35
+nb_layers:		2
+nb_hiddens:		256
+nb_steps:		200
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		07-27-02-19
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/07-27-02-19/
+dataset_name:		ssc
+data_folder:		data/raw/
+save_best:		True
+batch_size:		128
+nb_epochs:		50
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+
+Number of examples in train set: 75466
+Number of examples in valid set: 9981
+Number of examples in test set: 20382
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=35, bias=False)
+      (norm): BatchNorm1d(35, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 255337
+
+------ Begin training ------
+

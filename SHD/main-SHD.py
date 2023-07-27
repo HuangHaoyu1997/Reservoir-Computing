@@ -2,16 +2,19 @@
 首次修改2023年7月12日23:59:14
 
 '''
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-import time, warnings
+import time, warnings, os, h5py, logging
 warnings.filterwarnings("ignore")
-from torch.optim.lr_scheduler import StepLR
+from datetime import timedelta
+from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
 from tqdm.auto import tqdm
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+logger = logging.getLogger(__name__)
 
 class config:
     date = time.strftime("%Y-%m-%d-%H-%M-%S/", time.localtime(time.time()))[5:16]
@@ -20,7 +23,10 @@ class config:
     input = 700
     hid = 128         # number of RC Neurons
     output = 20
-    time_step = 250  # Number of steps to unroll
+    nb_steps = 250  # Number of steps to unroll
+    
+    scheduler_patience = 2      # Number of epochs without progress before the learning rate gets decreased.
+    scheduler_factor = 0.7      # Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.
     
     thr = 0.5
     b_j0 = 0.01       # thr baseline
@@ -41,7 +47,8 @@ class config:
     l1 = 0.0000 # 0.0003
     l1_targ = 2000
     fr_norm = 0.005
-    fr_targ = 0.06
+    fr_min = 0.01
+    fr_max = 0.10
     dropout = 0.75
     dropout_stepping = 0.04
     dropout_stop = 0.95
@@ -148,7 +155,7 @@ class RC(nn.Module):
         return mem, spike, B, b
     
     def forward(self, input, mask):
-        batch, time_step, _ = input.shape
+        batch, nb_steps, _ = input.shape
         self.b_hid1 = self.b_hid2 = self.b_out = config.b_j0
         
         hid1_mem = torch.rand(batch, config.hid).to(config.device)
@@ -166,7 +173,7 @@ class RC(nn.Module):
         if config.dropout > 0:
             self.hid1_hid1.weight.data = self.hid1_hid1.weight.data * mask[0].T
             self.hid2_hid2.weight.data = self.hid2_hid2.weight.data * mask[1].T
-        for t in range(time_step):
+        for t in range(nb_steps):
             input_t = input[:,t,:].float()
             ########## Layer 1 ##########
             inpt_hid1 = self.inpt_hid1(input_t) + self.hid1_hid1(hid1_spk)
@@ -186,8 +193,8 @@ class RC(nn.Module):
             if t > 10:
                 output += F.softmax(out_mem, dim=1)
             
-        sum1_spk /= time_step
-        sum2_spk /= time_step
+        sum1_spk /= nb_steps
+        sum2_spk /= nb_steps
 
         A_norm = torch.norm(self.hid1_hid1.weight, p=1) + torch.norm(self.hid2_hid2.weight, p=1)
         # cluster_in1 = 0 # 簇内聚类程度
@@ -209,95 +216,241 @@ class RC(nn.Module):
 
         return output, sum1_spk, sum2_spk, A_norm, 0,0 # cluster_in1+cluster_in2, cluster_out1+cluster_out2
 
+    #####################################
+    ########### load SHD data ###########
+def load_shd_or_ssc():
+    train_X = np.load('data/trainX_4ms.npy')
+    train_y = np.load('data/trainY_4ms.npy').astype(float)
+
+    test_X = np.load('data/testX_4ms.npy')
+    test_y = np.load('data/testY_4ms.npy').astype(float)
+
+    print('dataset shape: ', train_X.shape)
+    print('dataset shape: ', test_X.shape)
+
+    tensor_trainX = torch.Tensor(train_X)  # transform to torch tensor
+    tensor_trainY = torch.Tensor(train_y)
+    train_dataset = torch.utils.data.TensorDataset(tensor_trainX, tensor_trainY)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
+    tensor_testX = torch.Tensor(test_X)  # transform to torch tensor
+    tensor_testY = torch.Tensor(test_y)
+    test_dataset = torch.utils.data.TensorDataset(tensor_testX, tensor_testY)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch, shuffle=False)
+    return train_loader, test_loader
+
 ################################################
 ########### define training pipeline ###########
-def train(trial, model, optimizer, criterion, num_epochs, train_loader, test_loader):
-    scheduler = StepLR(optimizer, step_size=10, gamma=.5)
-    model.train()
-    train_accs, test_accs = [], []
-    best_accuracy = 85
-    a = torch.zeros((config.hid, config.hid), dtype=torch.int)
-    for i in range(4):
-        a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
-    invalid_zeros = 1-(a==1).sum().item()/config.hid**2
-    if invalid_zeros < config.dropout:
-        b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
-        m1 = a & b
-        m1 += torch.eye(config.hid, config.hid, dtype=int)
-    else: m1 = a
-    # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    a = torch.zeros((config.hid, config.hid), dtype=torch.int)
-    for i in range(4):
-        a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
-    invalid_zeros = 1-(a==1).sum().item()/config.hid**2
-    if invalid_zeros < config.dropout:
-        b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
-        m2 = a & b
-        m2 += torch.eye(config.hid, config.hid, dtype=int)
-    else: m2 = a
-    # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-    mask = [m1.float().to(config.device), m2.float().to(config.device)]
-    torch.save([model.state_dict(), mask], config.save_dir+'/before-train-{:d}-{:d}-{:.2f}.tar'.format(trial, 0, 0))
-    
-    for epoch in range(num_epochs):
-        now = time.time()
-        loss_sum = 0
+class Experiment:
+    """Training and testing models on SHD and SSC datasets."""
+    def __init__(self):
+        # Initialize logging
+        os.makedirs(config.save_dir) if not os.path.exists(config.save_dir) else None
+        logging.FileHandler(filename=config.save_dir + "/exp.log", mode="a", encoding=None, delay=False,)
+        logging.basicConfig(filename=config.save_dir + "/exp.log", level=logging.INFO, format="%(message)s", filemode='a',)
+        logging.info("===== Exp configuration =====")
+        for var in vars(config):
+            if var[0] != '_': 
+                logging.info(str(var) + ':\t\t' + str(vars(config)[var]))
+        
+        self.train_loader, self.test_loader = load_shd_or_ssc()
+        self.net = RC().to(config.device)
+        logging.info(f"\nCreated new spiking model:\n {self.net}\n")
+        self.nb_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        logging.info(f"Total number of trainable parameters is {self.nb_params}")
+        
+        # optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, weight_decay=config.weight_decay)
+        # optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr)
+        # optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.lr, eps=1e-5)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), config.lr)
+        # self.scheduler = StepLR(self.optimizer, step_size=10, gamma=.5)
+        self.scheduler = ReduceLROnPlateau(
+            optimizer=self.optimizer,
+            mode="max",
+            factor=config.scheduler_factor,
+            patience=config.scheduler_patience,
+            min_lr=1e-6,
+        )
+        self.loss_fn = nn.CrossEntropyLoss()
+        
+    def train_one_epoch(self, e, mask):
+        start = time.time()
+        self.net.train()
+        losses, epoch_spike_rate = [], 0
         correct, total = 0, 0
-        for i, (images, labels) in enumerate(tqdm(train_loader)):
-            images = images.view(-1, config.time_step, config.input).requires_grad_().to(config.device)
+
+        for step, (images, labels) in enumerate(self.train_loader):
+            images = images.view(-1, config.nb_steps, config.input).requires_grad_().to(config.device)
             labels = labels.long().to(config.device)
-            optimizer.zero_grad()
             
-            outputs, sum1_spk, sum2_spk, A_norm, cluster_in, cluster_out = model(images.requires_grad_().to(config.device), mask)
-            firing_rate = sum1_spk.mean()*0.5 + sum2_spk.mean()*0.5
+            outputs, sum1_spk, sum2_spk, A_norm, cluster_in, cluster_out = self.net(images, mask)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted.cpu() == labels.long().cpu()).sum()
             
-            # label smoothing
             if config.smoothing>0:
                 with torch.no_grad():
                     true_dist = torch.zeros_like(outputs)
                     true_dist.fill_(config.smoothing / (config.output - 1))
                     true_dist.scatter_(1, labels.unsqueeze(1), 1.0 - config.smoothing)
-                
-                loss = criterion(outputs, true_dist)
-            else:
-                loss = criterion(outputs, labels)
-            
-            loss = loss + config.fr_norm * F.relu(firing_rate - config.fr_targ) + \
-                    config.l1 * F.relu(A_norm - config.l1_targ) # , torch.max(A_norm-6000, 0) 规定一个区间，
-                    # (0.02*cluster_in - 0.04*cluster_out) + \
-            loss_sum += loss.item()
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
-        tr_acc = 100. * correct.numpy() / total
-        ts_acc = test(model, test_loader, mask)
-        if ts_acc > best_accuracy and tr_acc > 85:
-            torch.save([model.state_dict(), mask], config.save_dir+'/bestmodel-{:d}-{:d}-{:.2f}.tar'.format(trial, epoch, ts_acc))
-            best_accuracy = ts_acc
-        train_accs.append(tr_acc)
-        test_accs.append(ts_acc)
+                loss = self.loss_fn(outputs, true_dist)
+            else: loss = self.loss_fn(outputs, labels)
+            losses.append(loss.item())
 
-        print('epoch:%d, Loss:%.4f, Tr Acc:%.4f, Ts Acc:%.2f, Time:%.4f,\tA Norm:%.4f,\tFr:%.4f, Mask:%.4f, Cin:%.4f, Cout:%.4f'%\
-            (epoch, loss.item(), tr_acc, ts_acc, time.time()-now, A_norm.item(), firing_rate, (m1==0).sum().item()/config.hid**2, cluster_in, cluster_out))
-        if epoch % config.ckpt_freq==0:
-            torch.save([model.state_dict(), mask], config.save_dir+'/model-{:d}-{:d}-{:.2f}.tar'.format(trial, epoch, ts_acc))
+            # Spike activity
+            firing_rates = sum1_spk.mean()*0.5 + sum2_spk.mean()*0.5
+            epoch_spike_rate += torch.mean(firing_rates)
+            reg_quiet = F.relu(config.fr_min - firing_rates).sum()
+            reg_burst = F.relu(firing_rates - config.fr_max).sum()
+            loss += config.fr_norm * (reg_quiet + reg_burst)
+            # loss += config.l1 * F.relu(A_norm - config.l1_targ) # , torch.max(A_norm-6000, 0) 规定一个区间，
+            # loss += (0.02*cluster_in - 0.04*cluster_out)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted.cpu() == labels.long().cpu()).sum()
         
-        if (m1==0).sum().item()/config.hid**2 <= config.dropout_stop or \
-            (m2==0).sum().item()/config.hid**2 <= config.dropout_stop:
-            m1 = m1&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
-            m2 = m2&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
-            mask = [m1.float().to(config.device), m2.float().to(config.device)]
-    return np.array(train_accs), np.array(test_accs)
+        # Learning rate of whole epoch
+        current_lr = self.optimizer.param_groups[-1]["lr"]
+        tr_loss = np.mean(losses)
+        tr_acc = 100. * correct.numpy() / total
+        epoch_spike_rate /= step
+        elapsed = str(timedelta(seconds=time.time() - start))
+        logging.info(f'Epoch:{e}, Tr Loss:{tr_loss}, Acc:{tr_acc}, Time:{elapsed},\tA Norm:{A_norm.item()},\tFr:{epoch_spike_rate}, \
+                     lr:{current_lr}, Mask:{(mask[0]==0).sum().item()/config.hid**2}, Cin:{cluster_in}, Cout:{cluster_out}')
+        return tr_acc
+
+    def valid_one_epoch(self, trial, e, best_epoch, best_acc, mask):
+        with torch.no_grad():
+            self.net.eval()
+            losses, epoch_spike_rate, correct, total = [], 0, 0, 0
+            for step, (images, labels) in enumerate(self.test_loader):
+                images = images.view(-1, config.nb_steps, config.input).to(config.device)
+                labels = labels.long().to(config.device)
+                if config.noise_test > 0:
+                    images += torch.rand_like(images) * config.noise_test
+                outputs, sum1_spk, sum2_spk, _, _, _ = self.net(images, mask)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted.cpu() == labels.long().cpu()).sum()
+                loss = self.loss_fn(outputs, labels)
+                losses.append(loss.item())
+                firing_rates = sum1_spk.mean()*0.5 + sum2_spk.mean()*0.5
+                epoch_spike_rate += torch.mean(firing_rates)
+            valid_acc = 100. * correct.numpy() / total
+            valid_loss = np.mean(losses)
+            epoch_spike_rate /= step
+            logging.info(f"Epoch {e}: Te loss:{valid_loss}, acc:{valid_acc}, Fr:{epoch_spike_rate}")
+
+            self.scheduler.step(valid_acc)
+            # Update best epoch and accuracy
+            if valid_acc > best_acc:
+                best_acc = valid_acc
+                best_epoch = e
+                torch.save([self.net.state_dict(), mask], f"{config.save_dir}/best_model.tar")
+                logging.info(f"\nBest model saved with valid acc={valid_acc}")
+            if e % config.ckpt_freq==0:
+                torch.save([self.net.state_dict(), mask], config.save_dir+'/model-{:d}-{:d}-{:.4f}.tar'.format(trial, e, valid_acc))
+            logging.info("\n-----------------------------\n")
+            return best_epoch, best_acc, valid_acc
+        
+    def forward(self, trial):
+        self.net = RC().to(config.device)
+        best_epoch, best_acc = 0, 0
+        train_accs, test_accs = [], [] # for error bar
+        
+        #### M1 mask
+        a = torch.zeros((config.hid, config.hid), dtype=torch.int)
+        for i in range(4): a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
+        invalid_zeros = 1-(a==1).sum().item()/config.hid**2
+        if invalid_zeros < config.dropout:
+            b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
+            m1 = a & b
+            m1 += torch.eye(config.hid, config.hid, dtype=int)
+        else: m1 = a
+        
+        #### M2 mask
+        a = torch.zeros((config.hid, config.hid), dtype=torch.int)
+        for i in range(4): a[i*32:(i+1)*32, i*32:(i+1)*32] = 1.
+        invalid_zeros = 1-(a==1).sum().item()/config.hid**2
+        if invalid_zeros < config.dropout:
+            b = (torch.rand(config.hid, config.hid) > (config.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(config.hid, config.hid, dtype=int))
+            m2 = a & b
+            m2 += torch.eye(config.hid, config.hid, dtype=int)
+        else: m2 = a
+        # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+        # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+        mask = [m1.float().to(config.device), m2.float().to(config.device)]
+        torch.save([self.net.state_dict(), mask], config.save_dir+'/before-train-{:d}-{:d}-{:.4f}.tar'.format(trial, 0, 0))
+        
+        logging.info(f"\n------ Trial {trial} begin ------\n")
+        for e in range(best_epoch + 1, best_epoch + config.epoch + 1):
+            train_acc = self.train_one_epoch(e, mask)
+            best_epoch, best_acc, test_acc = self.valid_one_epoch(trial, e, best_epoch, best_acc, mask)
+            train_accs.append(train_acc); test_accs.append(test_acc)
+
+            if (m1==0).sum().item()/config.hid**2 <= config.dropout_stop or \
+                (m2==0).sum().item()/config.hid**2 <= config.dropout_stop:
+                m1 = m1&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
+                m2 = m2&((torch.rand(config.hid, config.hid) > config.dropout_stepping).int() * (1-torch.eye(config.hid, config.hid)).int())
+                mask = [m1.float().to(config.device), m2.float().to(config.device)]
+        
+        logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
+        logging.info(f"\n------ Trial {trial} finished ------\n")
+        return np.array(train_accs), np.array(test_accs)
+    
+    def multiple_trial(self,):
+        train_acc_log = np.zeros((config.epoch, config.trials))
+        test_acc_log = np.zeros((config.epoch, config.trials))
+        for i in range(config.trials):
+            np.random.seed(config.seed+i)
+            torch.manual_seed(config.seed+i)
+            torch.cuda.manual_seed_all(config.seed+i)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+            train_acc, test_acc = self.forward(i)
+            train_acc_log[:,i] = train_acc
+            test_acc_log[:,i] = test_acc
+        return train_acc_log, test_acc_log
+    
+    def plot_errorbar(self, train_acc_log, test_acc_log, file_name):
+        train_mean = np.mean(train_acc_log, axis=1)
+        train_std = np.std(train_acc_log, axis=1)
+        # train_var = np.var(train_acc_log, axis=1)
+        # train_max = np.max(train_acc_log, axis=1)
+        # train_min = np.min(train_acc_log, axis=1)
+
+        test_mean = np.mean(test_acc_log, axis=1)
+        test_std = np.std(test_acc_log, axis=1)
+        # test_var = np.var(test_acc_log, axis=1)
+        # test_max = np.max(test_acc_log, axis=1)
+        # test_min = np.min(test_acc_log, axis=1)
+
+        plt.plot(list(range(config.epoch)), train_mean, color='deeppink', label='train')
+        plt.fill_between(list(range(config.epoch)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
+        # plt.fill_between(list(range(config.epoch)), train_min, train_max, color='violet', alpha=0.2)
+
+        plt.plot(list(range(config.epoch)), test_mean, color='blue', label='test')
+        plt.fill_between(list(range(config.epoch)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
+        # plt.fill_between(list(range(config.epoch)), test_min, test_max, color='blue', alpha=0.2)
+
+        plt.legend()
+        plt.grid()
+        # plt.axis([-5, 105, 75, 95])
+        plt.savefig(file_name)
+        # plt.show()
 
 def test(model, dataloader, mask):
-    # model.eval()
+    
     with torch.no_grad():
+        model.eval()
         correct, total = 0, 0
         for images, labels in dataloader:
-            images = images.view(-1, config.time_step, config.input).to(config.device)
+            images = images.view(-1, config.nb_steps, config.input).to(config.device)
             if config.noise_test > 0:
                 images += torch.rand_like(images) * config.noise_test
             outputs, _, _, _, _, _ = model(images, mask)
@@ -328,57 +481,10 @@ def multiple_trial():
         test_acc_log[:,i] = test_acc
     return train_acc_log, test_acc_log
 
-def plot_errorbar(train_acc_log, test_acc_log, file_name):
-    train_mean = np.mean(train_acc_log, axis=1)
-    train_std = np.std(train_acc_log, axis=1)
-    # train_var = np.var(train_acc_log, axis=1)
-    # train_max = np.max(train_acc_log, axis=1)
-    # train_min = np.min(train_acc_log, axis=1)
-
-    test_mean = np.mean(test_acc_log, axis=1)
-    test_std = np.std(test_acc_log, axis=1)
-    # test_var = np.var(test_acc_log, axis=1)
-    # test_max = np.max(test_acc_log, axis=1)
-    # test_min = np.min(test_acc_log, axis=1)
-
-    plt.plot(list(range(config.epoch)), train_mean, color='deeppink', label='train')
-    plt.fill_between(list(range(config.epoch)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
-    # plt.fill_between(list(range(config.epoch)), train_min, train_max, color='violet', alpha=0.2)
-
-    plt.plot(list(range(config.epoch)), test_mean, color='blue', label='test')
-    plt.fill_between(list(range(config.epoch)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
-    # plt.fill_between(list(range(config.epoch)), test_min, test_max, color='blue', alpha=0.2)
-
-    plt.legend()
-    plt.grid()
-    # plt.axis([-5, 105, 75, 95])
-    plt.savefig(file_name)
-    # plt.show()
-
 ###################################
 ########### start train ###########
 if __name__ == "__main__":
-    os.makedirs(config.save_dir) if not os.path.exists(config.save_dir) else None
-    #####################################
-    ########### load SHD data ###########
-
-    train_X = np.load('data/trainX_4ms.npy')
-    train_y = np.load('data/trainY_4ms.npy').astype(float)
-
-    test_X = np.load('data/testX_4ms.npy')
-    test_y = np.load('data/testY_4ms.npy').astype(float)
-
-    print('dataset shape: ', train_X.shape)
-    print('dataset shape: ', test_X.shape)
-
-    tensor_trainX = torch.Tensor(train_X)  # transform to torch tensor
-    tensor_trainY = torch.Tensor(train_y)
-    train_dataset = torch.utils.data.TensorDataset(tensor_trainX, tensor_trainY)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
-    tensor_testX = torch.Tensor(test_X)  # transform to torch tensor
-    tensor_testY = torch.Tensor(test_y)
-    test_dataset = torch.utils.data.TensorDataset(tensor_testX, tensor_testY)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config.batch, shuffle=False)
-
-    train_acc_log, test_acc_log = multiple_trial()
-    plot_errorbar(train_acc_log, test_acc_log, './fig/'+ config.date +'.pdf')
+    exp = Experiment()
+    train_acc_log, test_acc_log = exp.multiple_trial()
+    exp.plot_errorbar(train_acc_log, test_acc_log, './fig/'+ config.date +'.pdf')
+    

@@ -1,0 +1,56 @@
+===== Exp configuration =====
+date:		07-26-22-16
+save_dir:		./log/07-26-22-16
+seed:		20
+input:		700
+hid:		128
+output:		20
+nb_steps:		250
+scheduler_patience:		2
+scheduler_factor:		0.7
+thr:		0.5
+b_j0:		0.01
+dt:		1
+R_m:		1
+decay:		0.5
+rst:		0.05
+lens:		0.5
+gamma:		0.5
+gradient_type:		MG
+scale:		6.0
+hight:		0.15
+input_learn:		True
+epoch:		50
+trials:		5
+batch:		256
+lr:		0.01
+l1:		0.0
+l1_targ:		2000
+fr_norm:		0.005
+fr_min:		0.01
+fr_max:		0.1
+dropout:		0.75
+dropout_stepping:		0.04
+dropout_stop:		0.95
+weight_decay:		0.0001
+smoothing:		0.1
+noise_test:		0.0
+norm:		False
+shortcut:		False
+small_init:		False
+ckpt_freq:		10
+device:		cuda
+
+Created new spiking model:
+ RC(
+  (inpt_hid1): Linear(in_features=700, out_features=128, bias=True)
+  (hid1_hid1): Linear(in_features=128, out_features=128, bias=True)
+  (hid1_hid2): Linear(in_features=128, out_features=128, bias=True)
+  (hid2_hid2): Linear(in_features=128, out_features=128, bias=True)
+  (hid2_out): Linear(in_features=128, out_features=20, bias=True)
+)
+
+Total number of trainable parameters is 142396
+
+------ Trial 0 begin ------
+
