@@ -34,12 +34,18 @@ class config:
     new_exp_folder = './log/' + date +'/'      # Path to output folder to store experiment.
     dataset_name = 'shd'        # ["shd", "ssc"]
     data_folder = "data/raw/"
-    save_best = True
     batch_size = 128
     nb_epochs = 50
     dropout = 0.75
     dropout_stop = 0.95
     dropout_stepping = 0.02
+    ckpt_freq = 5
+    clustering = True
+    clustering_factor = [0.1, 0.25]
+    cin_minmax = [0.001, 0.05]
+    cout_minmax = [0.05, 0.2]
+    
+    noise_test = 0.2            # add rand(0,1) noise to test dataset with given noise strength.
     start_epoch = 0             # Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.
     lr = 1e-2                   # Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.
     scheduler_patience = 2      # Number of epochs without progress before the learning rate gets decreased.
@@ -115,7 +121,7 @@ class SNN(nn.Module):
                 all_spikes.append(x)
 
         firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1)) # Compute mean firing rate of each spiking neuron
-        return x, firing_rates
+        return x, firing_rates, all_spikes
 
 class LIFLayer(nn.Module):
     """
@@ -535,8 +541,8 @@ class Experiment:
             if var[0] != '_': 
                 logging.info(str(var) + ':\t\t' + str(vars(config)[var]))
 
-        logging.info(f"\nDevice is set to {config.device}\n")
-
+        logging.info(f"\nDevice is set to {config.device}")
+        logging.info(f"checkpoint_dir: {self.checkpoint_dir}\n")
         self.init_dataset()
         self.init_model()
 
@@ -588,8 +594,7 @@ class Experiment:
                 self.train_one_epoch(e, mask)
                 best_epoch, best_acc = self.valid_one_epoch(e, mask, best_epoch, best_acc)
                 
-                if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or \
-                (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
+                if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
                     m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
                     m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
                     mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
@@ -598,14 +603,12 @@ class Experiment:
             logging.info("\n------ Training finished ------\n")
 
             # Loading best model
-            if config.save_best:
-                self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=config.device)
-                logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
-            else:
-                logging.info("Cannot load best model because save_best option is disabled. Model from last epoch is used for testing.")
+            self.net = SNN().to(config.device)
+            self.net.load_state_dict(torch.load(f"{self.checkpoint_dir}/best_model-{best_acc}.tar", map_location=config.device)[0])
+            logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
 
         # Test trained model
-        if config.dataset_name in ["sc", "ssc"]:
+        if config.dataset_name == "ssc":
             self.test_one_epoch(self.test_loader, mask)
         else:
             self.test_one_epoch(self.valid_loader, mask)
@@ -678,7 +681,7 @@ class Experiment:
         for step, (x, _, y) in enumerate(self.train_loader):
             x = x.to(config.device)
             y = y.to(config.device)
-            output, firing_rates = self.net(x, mask)
+            output, firing_rates, all_spikes = self.net(x, mask)
             loss_val = self.loss_fn(output, y)
             losses.append(loss_val.item())
 
@@ -689,6 +692,38 @@ class Experiment:
                     reg_quiet = F.relu(config.reg_fmin - firing_rates).sum()
                     reg_burst = F.relu(firing_rates - config.reg_fmax).sum()
                     loss_val += config.reg_factor * (reg_quiet + reg_burst)
+            
+            # clustering for first layer
+            cluster_ins, cluster_outs = [], []
+            global_mean = 0
+            for i in range(8):
+                cluster_mean = self.net.snn[0].V.weight[i*128:(i+1)*128, i*128:(i+1)*128].mean(1)
+                global_mean += cluster_mean
+                cluster_in = F.cosine_similarity(self.net.snn[0].V.weight[i*128:(i+1)*128, i*128:(i+1)*128], cluster_mean, dim=1)
+                cluster_ins.append(cluster_in.mean())
+            for i in range(8):
+                cluster_outs.append(F.cosine_similarity(self.net.snn[0].V.weight[i*128:(i+1)*128, i*128:(i+1)*128].mean(1), global_mean, dim=0))
+            cin1 = torch.var(torch.stack(cluster_ins))
+            cout1 = torch.var(torch.stack(cluster_outs))
+            
+            # for second layer
+            cluster_ins, cluster_outs = [], []
+            global_mean = 0
+            for i in range(8):
+                cluster_mean = self.net.snn[1].V.weight[i*128:(i+1)*128, i*128:(i+1)*128].mean(1)
+                global_mean += cluster_mean
+                cluster_in = F.cosine_similarity(self.net.snn[1].V.weight[i*128:(i+1)*128, i*128:(i+1)*128], cluster_mean, dim=1)
+                cluster_ins.append(cluster_in.mean())
+            for i in range(8):
+                cluster_outs.append(F.cosine_similarity(self.net.snn[1].V.weight[i*128:(i+1)*128, i*128:(i+1)*128].mean(1), global_mean, dim=0))
+            cin2 = torch.var(torch.stack(cluster_ins))
+            cout2 = torch.var(torch.stack(cluster_outs))
+            if config.clustering:
+                loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin1) + F.relu(cin1 - config.cin_minmax[1]))
+                loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin2) + F.relu(cin2 - config.cin_minmax[1]))
+                loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout1) + F.relu(cout1 - config.cout_minmax[1]))
+                loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout2) + F.relu(cout2 - config.cout_minmax[1]))
+            print("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f"%(cin1.item(), cin2.item(), cout1.item(), cout2.item(), cout1.item()/cin1.item(), cout2.item()/cin2.item()))
 
             self.optimizer.zero_grad()
             loss_val.backward()
@@ -704,7 +739,7 @@ class Experiment:
         train_acc = np.mean(accs)
         if self.net.is_snn: epoch_spike_rate /= step
         elapsed = str(timedelta(seconds=time.time() - start))
-        logging.info(f"Epoch {e}: train loss={train_loss}, acc={train_acc}, fr={epoch_spike_rate}, lr={current_lr}, time={elapsed}")
+        logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}, cin={cin1.item():.6f}, {cin2.item():.6f}, cout={cout1.item():.6f}, {cout2.item():.6f}")
 
     def valid_one_epoch(self, e, mask, best_epoch, best_acc):
         start = time.time()
@@ -713,9 +748,10 @@ class Experiment:
             losses, accs, epoch_spike_rate = [], [], 0
 
             for step, (x, _, y) in enumerate(self.valid_loader):
+                x += torch.rand_like(x) * config.noise_test
                 x = x.to(config.device)
                 y = y.to(config.device)
-                output, firing_rates = self.net(x, mask)
+                output, firing_rates, all_spikes = self.net(x, mask)
 
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
@@ -730,17 +766,17 @@ class Experiment:
             valid_acc = np.mean(accs)
             if self.net.is_snn: epoch_spike_rate /= step
             elapsed = str(timedelta(seconds=time.time() - start))
-            sparsity = (mask[0]==0).sum().item()/config.nb_hiddens**2
-            logging.info(f"Epoch {e}: valid loss={valid_loss}, acc={valid_acc}, fr={epoch_spike_rate}, mask={sparsity}, time={elapsed}")
+            sparsity = ((mask[0]==0).sum().item()/config.nb_hiddens**2 + (mask[1]==0).sum().item()/config.nb_hiddens**2)/2
+            logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, mask={sparsity:.4f}, time={elapsed}")
 
             self.scheduler.step(valid_acc)
 
+            if e % config.ckpt_freq == 0:
+                torch.save([self.net, mask], self.checkpoint_dir+'/model-{:d}-{:.4f}.tar'.format(e, valid_acc))
             # Update best epoch and accuracy
             if valid_acc > best_acc:
-                best_acc = valid_acc
-                best_epoch = e
-                # Save best model
-                torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
+                best_acc = valid_acc; best_epoch = e
+                if valid_acc > 0.85: torch.save([self.net, mask], f"{self.checkpoint_dir}/best_model-{valid_acc}.tar")
                 logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
