@@ -1,0 +1,364 @@
+===== Exp configuration =====
+neuron_type:		RadLIF
+nb_inputs:		700
+nb_outputs:		20
+nb_layers:		3
+nb_hiddens:		1024
+nb_steps:		100
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		07-30-05-36
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/07-30-05-36/
+dataset_name:		shd
+data_folder:		data/raw/
+batch_size:		128
+nb_epochs:		50
+dropout:		0.75
+dropout_stop:		0.95
+dropout_stepping:		0.0
+ckpt_freq:		5
+clustering:		False
+clustering_factor:		[0.1, 0.25]
+cin_minmax:		[0.001, 0.05]
+cout_minmax:		[0.05, 0.2]
+noise_test:		0.2
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+checkpoint_dir: ./log/07-30-05-36//checkpoints/
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=1024, bias=False)
+      (V): Linear(in_features=1024, out_features=1024, bias=False)
+      (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RadLIFLayer(
+      (W): Linear(in_features=1024, out_features=1024, bias=False)
+      (V): Linear(in_features=1024, out_features=1024, bias=False)
+      (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=1024, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 2129980
+
+------ Begin training ------
+
+Epoch 1: train loss=3.5882, acc=0.0722, fr=0.0609, lr=0.0100, time=0:00:51.205137, cin=0.011140, 0.015706, cout=0.195243, 0.204584
+Epoch 1: valid loss=3.0761, acc=0.0747, fr=0.0652, mask=0.8750, time=0:00:07.312701
+
+Best model saved with valid acc=0.07469223484848485
+
+-----------------------------
+
+Epoch 2: train loss=2.6878, acc=0.1467, fr=0.0660, lr=0.0100, time=0:00:41.713913, cin=0.012433, 0.005776, cout=0.048996, 0.139694
+Epoch 2: valid loss=2.5988, acc=0.1688, fr=0.0717, mask=0.8760, time=0:00:06.922392
+
+Best model saved with valid acc=0.1687578914141414
+
+-----------------------------
+
+Epoch 3: train loss=2.4229, acc=0.2065, fr=0.0697, lr=0.0100, time=0:00:41.917566, cin=0.006068, 0.003563, cout=0.056815, 0.089153
+Epoch 3: valid loss=2.4896, acc=0.2231, fr=0.0731, mask=0.8760, time=0:00:06.927312
+
+Best model saved with valid acc=0.2230902777777778
+
+-----------------------------
+
+Epoch 4: train loss=2.0243, acc=0.3346, fr=0.0714, lr=0.0100, time=0:00:41.775797, cin=0.023376, 0.005306, cout=0.243335, 0.182411
+Epoch 4: valid loss=2.0187, acc=0.3293, fr=0.0781, mask=0.8760, time=0:00:06.989298
+
+Best model saved with valid acc=0.329269255050505
+
+-----------------------------
+
+Epoch 5: train loss=1.6276, acc=0.4545, fr=0.0780, lr=0.0100, time=0:00:42.018327, cin=0.012258, 0.008894, cout=0.199236, 0.110184
+Epoch 5: valid loss=1.4450, acc=0.5145, fr=0.0837, mask=0.8760, time=0:00:07.054734
+
+Best model saved with valid acc=0.514520202020202
+
+-----------------------------
+
+Epoch 6: train loss=1.2691, acc=0.5656, fr=0.0797, lr=0.0100, time=0:00:41.724622, cin=0.015529, 0.015843, cout=0.143465, 0.087847
+Epoch 6: valid loss=1.2766, acc=0.5878, fr=0.0826, mask=0.8760, time=0:00:07.117220
+
+Best model saved with valid acc=0.5878314393939393
+
+-----------------------------
+
+Epoch 7: train loss=1.0422, acc=0.6432, fr=0.0812, lr=0.0100, time=0:00:41.768706, cin=0.012988, 0.015434, cout=0.125219, 0.079707
+Epoch 7: valid loss=1.0341, acc=0.6578, fr=0.0850, mask=0.8760, time=0:00:07.194806
+
+Best model saved with valid acc=0.6578282828282829
+
+-----------------------------
+
+Epoch 8: train loss=0.8785, acc=0.6988, fr=0.0824, lr=0.0100, time=0:00:41.602024, cin=0.007467, 0.013956, cout=0.084965, 0.069787
+Epoch 8: valid loss=1.1523, acc=0.6578, fr=0.0865, mask=0.8760, time=0:00:07.103009
+
+-----------------------------
+
+Epoch 9: train loss=0.7698, acc=0.7398, fr=0.0864, lr=0.0100, time=0:00:42.139015, cin=0.008682, 0.013662, cout=0.066610, 0.046088
+Epoch 9: valid loss=1.4812, acc=0.5631, fr=0.0968, mask=0.8760, time=0:00:07.066374
+
+-----------------------------
+
+Epoch 10: train loss=0.7113, acc=0.7539, fr=0.0917, lr=0.0100, time=0:00:41.613612, cin=0.007493, 0.009099, cout=0.057519, 0.049199
+Epoch 10: valid loss=0.8572, acc=0.7332, fr=0.0953, mask=0.8760, time=0:00:07.140870
+
+Best model saved with valid acc=0.7332307449494949
+
+-----------------------------
+
+Epoch 11: train loss=0.6283, acc=0.7871, fr=0.0943, lr=0.0100, time=0:00:42.560346, cin=0.010163, 0.010904, cout=0.027262, 0.042690
+Epoch 11: valid loss=0.7584, acc=0.7665, fr=0.0989, mask=0.8760, time=0:00:07.192836
+
+Best model saved with valid acc=0.7664930555555556
+
+-----------------------------
+
+Epoch 12: train loss=0.5332, acc=0.8170, fr=0.0947, lr=0.0100, time=0:00:41.561492, cin=0.009932, 0.007897, cout=0.030634, 0.067643
+Epoch 12: valid loss=0.6349, acc=0.8016, fr=0.1001, mask=0.8760, time=0:00:07.120145
+
+Best model saved with valid acc=0.8015703914141414
+
+-----------------------------
+
+Epoch 13: train loss=0.4985, acc=0.8316, fr=0.0988, lr=0.0100, time=0:00:42.278040, cin=0.014340, 0.011036, cout=0.031766, 0.045100
+Epoch 13: valid loss=0.8060, acc=0.7708, fr=0.1037, mask=0.8760, time=0:00:07.053850
+
+-----------------------------
+
+Epoch 14: train loss=0.4390, acc=0.8509, fr=0.1015, lr=0.0100, time=0:00:39.032294, cin=0.015082, 0.008515, cout=0.020570, 0.036406
+Epoch 14: valid loss=0.7503, acc=0.7657, fr=0.1081, mask=0.8760, time=0:00:07.272061
+
+-----------------------------
+
+Epoch 15: train loss=0.4143, acc=0.8609, fr=0.1030, lr=0.0100, time=0:00:42.422735, cin=0.011475, 0.007789, cout=0.022698, 0.025231
+Epoch 15: valid loss=0.8136, acc=0.7522, fr=0.1075, mask=0.8760, time=0:00:07.343184
+
+-----------------------------
+
+Epoch 16: train loss=0.3812, acc=0.8692, fr=0.1029, lr=0.0070, time=0:00:42.523536, cin=0.010751, 0.007947, cout=0.025199, 0.028708
+Epoch 16: valid loss=0.6680, acc=0.8067, fr=0.1066, mask=0.8760, time=0:00:07.346131
+
+Best model saved with valid acc=0.8066603535353535
+
+-----------------------------
+
+Epoch 17: train loss=0.3418, acc=0.8802, fr=0.1039, lr=0.0070, time=0:00:42.507066, cin=0.009735, 0.007107, cout=0.021042, 0.033812
+Epoch 17: valid loss=0.7204, acc=0.7809, fr=0.1091, mask=0.8760, time=0:00:07.463466
+
+-----------------------------
+
+Epoch 18: train loss=0.3321, acc=0.8882, fr=0.1054, lr=0.0070, time=0:00:42.537529, cin=0.011106, 0.007806, cout=0.018219, 0.030136
+Epoch 18: valid loss=0.6127, acc=0.8088, fr=0.1117, mask=0.8760, time=0:00:07.216619
+
+Best model saved with valid acc=0.8088304924242424
+
+-----------------------------
+
+Epoch 19: train loss=0.3181, acc=0.8928, fr=0.1075, lr=0.0070, time=0:00:42.327039, cin=0.009727, 0.007310, cout=0.018872, 0.033068
+Epoch 19: valid loss=0.9232, acc=0.7491, fr=0.1134, mask=0.8760, time=0:00:07.281211
+
+-----------------------------
+
+Epoch 20: train loss=0.2953, acc=0.9012, fr=0.1081, lr=0.0070, time=0:00:42.526600, cin=0.010075, 0.005657, cout=0.033897, 0.039676
+Epoch 20: valid loss=0.7659, acc=0.7788, fr=0.1112, mask=0.8760, time=0:00:07.228628
+
+-----------------------------
+
+Epoch 21: train loss=0.2957, acc=0.8989, fr=0.1077, lr=0.0070, time=0:00:42.605052, cin=0.009376, 0.005934, cout=0.035210, 0.048491
+Epoch 21: valid loss=0.6930, acc=0.8018, fr=0.1132, mask=0.8760, time=0:00:07.296818
+
+-----------------------------
+
+Epoch 22: train loss=0.2823, acc=0.9025, fr=0.1104, lr=0.0049, time=0:00:42.300112, cin=0.009760, 0.005641, cout=0.025720, 0.047353
+Epoch 22: valid loss=0.8044, acc=0.7844, fr=0.1141, mask=0.8760, time=0:00:07.270614
+
+-----------------------------
+
+Epoch 23: train loss=0.2577, acc=0.9129, fr=0.1085, lr=0.0049, time=0:00:42.279049, cin=0.010018, 0.006319, cout=0.028765, 0.048346
+Epoch 23: valid loss=0.5704, acc=0.8369, fr=0.1119, mask=0.8760, time=0:00:07.510942
+
+Best model saved with valid acc=0.8369239267676768
+
+-----------------------------
+
+Epoch 24: train loss=0.2518, acc=0.9135, fr=0.1087, lr=0.0049, time=0:00:42.691958, cin=0.009896, 0.007431, cout=0.023507, 0.042910
+Epoch 24: valid loss=0.5745, acc=0.8241, fr=0.1143, mask=0.8760, time=0:00:07.261837
+
+-----------------------------
+
+Epoch 25: train loss=0.2404, acc=0.9170, fr=0.1089, lr=0.0049, time=0:00:42.413680, cin=0.008776, 0.007442, cout=0.028271, 0.037165
+Epoch 25: valid loss=0.6404, acc=0.8196, fr=0.1126, mask=0.8760, time=0:00:07.267689
+
+-----------------------------
+
+Epoch 26: train loss=0.2369, acc=0.9189, fr=0.1085, lr=0.0049, time=0:00:42.911015, cin=0.009857, 0.006675, cout=0.023101, 0.036053
+Epoch 26: valid loss=0.7666, acc=0.8008, fr=0.1122, mask=0.8760, time=0:00:07.269747
+
+-----------------------------
+
+Epoch 27: train loss=0.2166, acc=0.9244, fr=0.1081, lr=0.0034, time=0:00:42.730170, cin=0.009961, 0.006616, cout=0.022772, 0.035621
+Epoch 27: valid loss=0.5726, acc=0.8378, fr=0.1137, mask=0.8760, time=0:00:07.293478
+
+Best model saved with valid acc=0.8377919823232323
+
+-----------------------------
+
+Epoch 28: train loss=0.2078, acc=0.9297, fr=0.1093, lr=0.0034, time=0:00:42.560990, cin=0.009869, 0.006047, cout=0.029311, 0.039855
+Epoch 28: valid loss=0.7416, acc=0.8019, fr=0.1143, mask=0.8760, time=0:00:07.373948
+
+-----------------------------
+
+Epoch 29: train loss=0.1956, acc=0.9300, fr=0.1096, lr=0.0034, time=0:00:43.077743, cin=0.009937, 0.006093, cout=0.031299, 0.040707
+Epoch 29: valid loss=0.6459, acc=0.8274, fr=0.1136, mask=0.8760, time=0:00:07.412107
+
+-----------------------------
+
+Epoch 30: train loss=0.1967, acc=0.9324, fr=0.1087, lr=0.0034, time=0:00:43.000482, cin=0.009905, 0.006244, cout=0.035496, 0.038868
+Epoch 30: valid loss=0.6686, acc=0.8112, fr=0.1135, mask=0.8760, time=0:00:07.318921
+
+-----------------------------
+
+Epoch 31: train loss=0.1765, acc=0.9404, fr=0.1089, lr=0.0024, time=0:00:43.067358, cin=0.009712, 0.006191, cout=0.035343, 0.040324
+Epoch 31: valid loss=0.7121, acc=0.8153, fr=0.1137, mask=0.8760, time=0:00:07.305677
+
+-----------------------------
+
+Epoch 32: train loss=0.1759, acc=0.9390, fr=0.1087, lr=0.0024, time=0:00:43.129486, cin=0.009635, 0.006366, cout=0.034897, 0.039987
+Epoch 32: valid loss=0.8028, acc=0.7997, fr=0.1125, mask=0.8760, time=0:00:07.242869
+
+-----------------------------
+
+Epoch 33: train loss=0.2045, acc=0.9296, fr=0.1087, lr=0.0024, time=0:00:42.889408, cin=0.009832, 0.005795, cout=0.030701, 0.042220
+Epoch 33: valid loss=0.7208, acc=0.8070, fr=0.1145, mask=0.8760, time=0:00:07.280395
+
+-----------------------------
+
+Epoch 34: train loss=0.2147, acc=0.9257, fr=0.1096, lr=0.0017, time=0:00:42.727675, cin=0.009944, 0.005910, cout=0.030502, 0.041290
+Epoch 34: valid loss=0.6198, acc=0.8290, fr=0.1146, mask=0.8760, time=0:00:07.256880
+
+-----------------------------
+
+Epoch 35: train loss=0.1987, acc=0.9333, fr=0.1094, lr=0.0017, time=0:00:42.938341, cin=0.009850, 0.006090, cout=0.031418, 0.041908
+Epoch 35: valid loss=0.7034, acc=0.8153, fr=0.1140, mask=0.8760, time=0:00:07.190540
+
+-----------------------------
+
+Epoch 36: train loss=0.1799, acc=0.9395, fr=0.1093, lr=0.0017, time=0:00:42.648367, cin=0.009842, 0.005721, cout=0.032055, 0.042089
+Epoch 36: valid loss=0.6178, acc=0.8233, fr=0.1147, mask=0.8760, time=0:00:07.305414
+
+-----------------------------
+
+Epoch 37: train loss=0.1611, acc=0.9476, fr=0.1097, lr=0.0012, time=0:00:42.873295, cin=0.009882, 0.005767, cout=0.031318, 0.042108
+Epoch 37: valid loss=0.6378, acc=0.8230, fr=0.1152, mask=0.8760, time=0:00:07.271099
+
+-----------------------------
+
+Epoch 38: train loss=0.1724, acc=0.9442, fr=0.1109, lr=0.0012, time=0:00:42.460387, cin=0.009832, 0.005620, cout=0.030347, 0.043070
+Epoch 38: valid loss=0.6433, acc=0.8292, fr=0.1164, mask=0.8760, time=0:00:07.315480
+
+-----------------------------
+
+Epoch 39: train loss=0.1632, acc=0.9443, fr=0.1113, lr=0.0012, time=0:00:42.834485, cin=0.009591, 0.005508, cout=0.030042, 0.041837
+Epoch 39: valid loss=0.6238, acc=0.8318, fr=0.1165, mask=0.8760, time=0:00:07.297976
+
+-----------------------------
+
+Epoch 40: train loss=0.1598, acc=0.9448, fr=0.1116, lr=0.0008, time=0:00:42.698646, cin=0.009520, 0.005402, cout=0.029860, 0.040607
+Epoch 40: valid loss=0.6584, acc=0.8282, fr=0.1167, mask=0.8760, time=0:00:07.315834
+
+-----------------------------
+
+Epoch 41: train loss=0.1602, acc=0.9480, fr=0.1114, lr=0.0008, time=0:00:43.099825, cin=0.009476, 0.005358, cout=0.029991, 0.040914
+Epoch 41: valid loss=0.6658, acc=0.8249, fr=0.1163, mask=0.8760, time=0:00:07.347203
+
+-----------------------------
+
+Epoch 42: train loss=0.1628, acc=0.9453, fr=0.1112, lr=0.0008, time=0:00:42.908517, cin=0.009410, 0.005317, cout=0.029692, 0.041713
+Epoch 42: valid loss=0.6037, acc=0.8387, fr=0.1165, mask=0.8760, time=0:00:07.427536
+
+Best model saved with valid acc=0.838738952020202
+
+-----------------------------
+
+Epoch 43: train loss=0.1649, acc=0.9423, fr=0.1115, lr=0.0008, time=0:00:42.941039, cin=0.009425, 0.005325, cout=0.029241, 0.041228
+Epoch 43: valid loss=0.6668, acc=0.8164, fr=0.1168, mask=0.8760, time=0:00:07.402406
+
+-----------------------------
+
+Epoch 44: train loss=0.1567, acc=0.9465, fr=0.1116, lr=0.0008, time=0:00:42.995326, cin=0.009653, 0.005369, cout=0.028263, 0.041094
+Epoch 44: valid loss=0.6272, acc=0.8314, fr=0.1171, mask=0.8760, time=0:00:07.463917
+
+-----------------------------
+
+Epoch 45: train loss=0.1577, acc=0.9461, fr=0.1121, lr=0.0008, time=0:00:40.583769, cin=0.009529, 0.005360, cout=0.027719, 0.041125
+Epoch 45: valid loss=0.6590, acc=0.8219, fr=0.1174, mask=0.8760, time=0:00:07.220941
+
+-----------------------------
+
+Epoch 46: train loss=0.1541, acc=0.9497, fr=0.1122, lr=0.0006, time=0:00:42.870990, cin=0.009524, 0.005317, cout=0.026750, 0.040850
+Epoch 46: valid loss=0.6272, acc=0.8292, fr=0.1177, mask=0.8760, time=0:00:07.239260
+
+-----------------------------
+
+Epoch 47: train loss=0.1432, acc=0.9503, fr=0.1126, lr=0.0006, time=0:00:43.365389, cin=0.009233, 0.005270, cout=0.026223, 0.040806
+Epoch 47: valid loss=0.6427, acc=0.8294, fr=0.1178, mask=0.8760, time=0:00:07.240833
+
+-----------------------------
+
+Epoch 48: train loss=0.1510, acc=0.9484, fr=0.1126, lr=0.0006, time=0:00:42.865547, cin=0.009072, 0.005216, cout=0.025627, 0.040808
+Epoch 48: valid loss=0.6561, acc=0.8242, fr=0.1181, mask=0.8760, time=0:00:07.447360
+
+-----------------------------
+
+Epoch 49: train loss=0.1455, acc=0.9535, fr=0.1130, lr=0.0004, time=0:00:29.925265, cin=0.009010, 0.005230, cout=0.025448, 0.040519
+Epoch 49: valid loss=0.6453, acc=0.8346, fr=0.1182, mask=0.8760, time=0:00:05.943348
+
+-----------------------------
+
+Epoch 50: train loss=0.1485, acc=0.9496, fr=0.1130, lr=0.0004, time=0:00:30.011315, cin=0.008958, 0.005242, cout=0.025322, 0.040375
+Epoch 50: valid loss=0.6053, acc=0.8398, fr=0.1182, mask=0.8760, time=0:00:05.853899
+
+Best model saved with valid acc=0.8397648358585859
+
+-----------------------------
+
+
+Best valid acc at epoch 50: 0.8397648358585859
+
+
+------ Training finished ------
+
