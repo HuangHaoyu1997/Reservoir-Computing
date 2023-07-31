@@ -1,0 +1,231 @@
+===== Exp configuration =====
+neuron_type:		RLIF
+nb_inputs:		700
+nb_outputs:		20
+nb_layers:		3
+nb_hiddens:		256
+nb_steps:		100
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		08-01-03-37
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/08-01-03-37
+dataset_name:		shd
+data_folder:		./data/raw/
+batch_size:		128
+nb_epochs:		30
+train_input_layer:		True
+trial:		5
+seed:		1690832280
+dropout:		0
+dropout_stop:		0.95
+dropout_stepping:		0.0
+ckpt_freq:		5
+clustering:		False
+clustering_factor:		[1, 2.5]
+cin_minmax:		[0.001, 0.05]
+cout_minmax:		[0.05, 0.2]
+nb_cluster:		8
+nb_per_cluster:		32
+noise_test:		0.0
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+checkpoint_dir: ./log/08-01-03-37/checkpoints/
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RLIFLayer(
+      (W): Linear(in_features=256, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 382524
+
+---------------Trial:1---------------
+
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RLIFLayer(
+      (W): Linear(in_features=256, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 382524
+
+------ Begin training ------
+
+Epoch 1: train loss=3.1875, acc=0.0475, fr=0.0045, lr=0.0100, time=28.940751, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 1: valid loss=3.0281, acc=0.0455, fr=0.0019, mask=0.8750, time=05.468144
+
+Best model saved with valid acc=0.04549400252525252
+
+-----------------------------
+
+Epoch 2: train loss=3.1773, acc=0.0502, fr=0.0045, lr=0.0100, time=25.788925, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 2: valid loss=3.0437, acc=0.0466, fr=0.0039, mask=0.8789, time=05.848102
+
+Best model saved with valid acc=0.046598800505050504
+
+-----------------------------
+
+Epoch 3: train loss=3.1823, acc=0.0497, fr=0.0045, lr=0.0100, time=27.279688, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 3: valid loss=3.1063, acc=0.0449, fr=0.0045, mask=0.8789, time=05.304636
+
+-----------------------------
+
+Epoch 4: train loss=3.1836, acc=0.0475, fr=0.0045, lr=0.0100, time=27.725864, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 4: valid loss=3.1176, acc=0.0387, fr=0.0046, mask=0.8789, time=06.074676
+
+-----------------------------
+
+Epoch 5: train loss=3.1808, acc=0.0490, fr=0.0045, lr=0.0100, time=28.780668, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 5: valid loss=3.1129, acc=0.0509, fr=0.0046, mask=0.8789, time=06.062511
+
+Best model saved with valid acc=0.050860164141414144
+
+-----------------------------
+
+Epoch 6: train loss=3.1776, acc=0.0492, fr=0.0045, lr=0.0100, time=27.585470, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 6: valid loss=3.1180, acc=0.0511, fr=0.0046, mask=0.8789, time=05.629668
+
+Best model saved with valid acc=0.05113636363636363
+
+-----------------------------
+
+Epoch 7: train loss=3.1774, acc=0.0505, fr=0.0045, lr=0.0100, time=25.066597, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 7: valid loss=3.1179, acc=0.0470, fr=0.0046, mask=0.8789, time=05.308166
+
+-----------------------------
+
+Epoch 8: train loss=3.1784, acc=0.0506, fr=0.0045, lr=0.0100, time=25.017180, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 8: valid loss=3.1200, acc=0.0435, fr=0.0046, mask=0.8789, time=05.363991
+
+-----------------------------
+
+Epoch 9: train loss=3.1866, acc=0.0503, fr=0.0045, lr=0.0100, time=24.654193, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 9: valid loss=3.1158, acc=0.0503, fr=0.0046, mask=0.8789, time=05.360451
+
+-----------------------------
+
+Epoch 10: train loss=3.1835, acc=0.0492, fr=0.0045, lr=0.0070, time=24.762893, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 10: valid loss=3.1240, acc=0.0493, fr=0.0046, mask=0.8789, time=05.381198
+
+-----------------------------
+
+Epoch 11: train loss=3.1819, acc=0.0478, fr=0.0045, lr=0.0070, time=25.419187, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 11: valid loss=3.1158, acc=0.0490, fr=0.0046, mask=0.8789, time=05.576430
+
+-----------------------------
+
+Epoch 12: train loss=3.1754, acc=0.0504, fr=0.0045, lr=0.0070, time=25.329368, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 12: valid loss=3.1106, acc=0.0457, fr=0.0046, mask=0.8789, time=05.379995
+
+-----------------------------
+
+Epoch 13: train loss=3.1792, acc=0.0546, fr=0.0045, lr=0.0049, time=24.726723, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 13: valid loss=3.1186, acc=0.0479, fr=0.0046, mask=0.8789, time=05.310870
+
+-----------------------------
+
+Epoch 14: train loss=3.1750, acc=0.0503, fr=0.0045, lr=0.0049, time=24.849768, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 14: valid loss=3.1160, acc=0.0504, fr=0.0046, mask=0.8789, time=05.386224
+
+-----------------------------
+
+Epoch 15: train loss=3.1854, acc=0.0497, fr=0.0045, lr=0.0049, time=25.357198, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 15: valid loss=3.1142, acc=0.0537, fr=0.0046, mask=0.8789, time=05.338377
+
+Best model saved with valid acc=0.05370107323232323
+
+-----------------------------
+
+Epoch 16: train loss=3.1739, acc=0.0471, fr=0.0045, lr=0.0049, time=25.676939, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 16: valid loss=3.1271, acc=0.0453, fr=0.0046, mask=0.8789, time=05.406515
+
+-----------------------------
+
+Epoch 17: train loss=3.1825, acc=0.0501, fr=0.0045, lr=0.0049, time=25.692082, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 17: valid loss=3.1242, acc=0.0459, fr=0.0046, mask=0.8789, time=05.752810
+
+-----------------------------
+
+Epoch 18: train loss=3.1843, acc=0.0511, fr=0.0045, lr=0.0049, time=25.716264, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 18: valid loss=3.1075, acc=0.0548, fr=0.0046, mask=0.8789, time=05.631267
+
+Best model saved with valid acc=0.05480587121212121
+
+-----------------------------
+
+Epoch 19: train loss=3.1825, acc=0.0474, fr=0.0045, lr=0.0049, time=25.725208, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 19: valid loss=3.1168, acc=0.0452, fr=0.0046, mask=0.8789, time=05.532978
+
+-----------------------------
+
+Epoch 20: train loss=3.1782, acc=0.0523, fr=0.0045, lr=0.0049, time=30.177586, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 20: valid loss=3.1173, acc=0.0472, fr=0.0046, mask=0.8789, time=05.609696
+
+-----------------------------
+
+Epoch 21: train loss=3.1814, acc=0.0514, fr=0.0045, lr=0.0049, time=26.503751, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 21: valid loss=3.1167, acc=0.0474, fr=0.0046, mask=0.8789, time=05.354338
+
+-----------------------------
+
+Epoch 22: train loss=3.1789, acc=0.0488, fr=0.0045, lr=0.0034, time=27.531254, cin=0.000921, 0.001125, cout=0.008449, 0.048766
+Epoch 22: valid loss=3.1152, acc=0.0470, fr=0.0046, mask=0.8789, time=06.125033
+
+-----------------------------
+

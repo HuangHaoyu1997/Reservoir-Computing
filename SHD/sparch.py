@@ -20,7 +20,7 @@ class config:
     nb_inputs = 700
     nb_outputs = 20
     nb_layers = 3               # Number of layers (including readout layer).
-    nb_hiddens = 1024            # Number of neurons in all hidden layers.
+    nb_hiddens = 256            # Number of neurons in all hidden layers.
     nb_steps = 100
     pdrop = 0.1                 # Dropout rate, must be between 0 and 1.
     normalization = "batchnorm" # Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.
@@ -37,22 +37,22 @@ class config:
     batch_size = 128
     nb_epochs = 30
     
-    train_input_layer = False
+    train_input_layer = True
     trial = 5
-    seed = round(time.time())
+    seed = -100 # round(time.time())
     dropout = 0
     dropout_stop = 0.95
     dropout_stepping = 0.0
     ckpt_freq = 5
-    clustering = True
-    clustering_factor = [0.1, 0.25]
+    clustering = False
+    clustering_factor = [1, 2.5]
     cin_minmax = [0.001, 0.05]
     cout_minmax = [0.05, 0.2]
     nb_cluster = 8
     nb_per_cluster = int(nb_hiddens/nb_cluster)
+    noise_test = 0.0            # add rand(0,1) noise to test dataset with given noise strength.
     
     
-    noise_test = 0.2            # add rand(0,1) noise to test dataset with given noise strength.
     start_epoch = 0             # Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.
     lr = 1e-2                   # Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.
     scheduler_patience = 2      # Number of epochs without progress before the learning rate gets decreased.
@@ -97,7 +97,6 @@ class SNN(nn.Module):
         self.input_shape = (config.batch_size, config.nb_steps, config.nb_inputs)
         self.layer_sizes = [config.nb_hiddens] * (config.nb_layers - 1) + [config.nb_outputs]
         self.input_size = float(torch.prod(torch.tensor(self.input_shape[2:])))
-        self.batch_size = self.input_shape[0]
         self.snn = self._init_layers()
 
     def _init_layers(self):
@@ -111,7 +110,6 @@ class SNN(nn.Module):
         for i in range(num_hidden_layers):
             snn.append(globals()[snn_class](input_size=input_size, hidden_size=self.layer_sizes[i],))
             input_size = self.layer_sizes[i] * (1 + config.bidirectional)
-
         if config.use_readout_layer:
             snn.append(ReadoutLayer(input_size=input_size, hidden_size=self.layer_sizes[-1],))
         return snn
@@ -232,7 +230,7 @@ class adLIFLayer(nn.Module):
 
         self.drop = nn.Dropout(p=config.pdrop)
 
-    def forward(self, x):
+    def forward(self, x, mask):
         # Concatenate flipped sequence on batch dim
         if config.bidirectional:
             x_flip = x.flip(1)
@@ -308,7 +306,7 @@ class RLIFLayer(nn.Module):
         
         self.drop = nn.Dropout(p=config.pdrop)
 
-    def forward(self, x):
+    def forward(self, x, mask):
         # Concatenate flipped sequence on batch dim
         if config.bidirectional:
             x_flip = x.flip(1)
@@ -378,9 +376,9 @@ class RadLIFLayer(nn.Module):
             self.normalize = True
         self.drop = nn.Dropout(p=config.pdrop)
         
-        if not config.train_input_layer:
-            for name, p in self.named_parameters():
-                if 'W' in name: p.requires_grad = False
+        # if not config.train_input_layer:
+        #     for name, p in self.named_parameters():
+        #         if 'W' in name: p.requires_grad = False
 
     def forward(self, x, mask):
         # x.shape = [batch, nb_steps, input]
@@ -576,14 +574,15 @@ class Experiment:
         self.loss_fn = nn.CrossEntropyLoss()
 
     def set_seed(self, seed):
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        if config.seed > 0:
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
     
     def forward(self, trial):
-        self.net = SNN().to(config.device)
+        self.init_model()
         train_accs, valid_accs = [], []
         # Initialize best accuracy
         if config.use_pretrained_model:
@@ -604,10 +603,11 @@ class Experiment:
             train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
             best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
             
-            if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
-                m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
+            if config.dropout>0:
+                if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
+                    m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                    m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                    mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
 
         logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
         logging.info("\n------ Training finished ------\n")
@@ -694,8 +694,8 @@ class Experiment:
             x = x.to(config.device)
             y = y.to(config.device)
             output, firing_rates, all_spikes = self.net(x, mask)
+            print(output, y)
             loss_val = self.loss_fn(output, y)
-            losses.append(loss_val.item())
 
             # Spike activity
             epoch_spike_rate += torch.mean(firing_rates)
@@ -705,35 +705,39 @@ class Experiment:
                 loss_val += config.reg_factor * (reg_quiet + reg_burst)
             
             # clustering for first layer
-            cluster_ins, cluster_outs = [], []
+            cluster_ins1, cluster_outs1 = [], []
             global_mean = 0
             for i in range(config.nb_cluster):
                 cluster_mean = self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1)
                 global_mean += cluster_mean
                 cluster_in = F.cosine_similarity(self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster], cluster_mean, dim=1)
-                cluster_ins.append(cluster_in.mean())
+                cluster_ins1.append(cluster_in.mean())
             for i in range(config.nb_cluster):
-                cluster_outs.append(F.cosine_similarity(self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
-            cin1 = torch.var(torch.stack(cluster_ins)); cout1 = torch.var(torch.stack(cluster_outs))
+                cluster_outs1.append(F.cosine_similarity(self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
+            cin1 = torch.var(torch.stack(cluster_ins1)); cout1 = torch.var(torch.stack(cluster_outs1))
             
             # for second layer
-            cluster_ins, cluster_outs = [], []
+            cluster_ins2, cluster_outs2 = [], []
             global_mean = 0
             for i in range(config.nb_cluster):
                 cluster_mean = self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1)
                 global_mean += cluster_mean
                 cluster_in = F.cosine_similarity(self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster], cluster_mean, dim=1)
-                cluster_ins.append(cluster_in.mean())
+                cluster_ins2.append(cluster_in.mean())
             for i in range(config.nb_cluster):
-                cluster_outs.append(F.cosine_similarity(self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
-            cin2 = torch.var(torch.stack(cluster_ins)); cout2 = torch.var(torch.stack(cluster_outs))
+                cluster_outs2.append(F.cosine_similarity(self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
+            cin2 = torch.var(torch.stack(cluster_ins2)); cout2 = torch.var(torch.stack(cluster_outs2))
             if config.clustering:
+                print('1',loss_val)
                 loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin1) + F.relu(cin1 - config.cin_minmax[1]))
+                print('2',loss_val)
                 loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin2) + F.relu(cin2 - config.cin_minmax[1]))
+                print('3',loss_val)
                 loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout1) + F.relu(cout1 - config.cout_minmax[1]))
                 loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout2) + F.relu(cout2 - config.cout_minmax[1]))
                 print("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f"%(cin1.item(), cin2.item(), cout1.item(), cout2.item(), cout1.item()/cin1.item(), cout2.item()/cin2.item()))
 
+            losses.append(loss_val.item())
             self.optimizer.zero_grad()
             loss_val.backward()
             self.optimizer.step()
