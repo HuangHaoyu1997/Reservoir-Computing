@@ -694,7 +694,6 @@ class Experiment:
             x = x.to(config.device)
             y = y.to(config.device)
             output, firing_rates, all_spikes = self.net(x, mask)
-            print(output, y)
             loss_val = self.loss_fn(output, y)
 
             # Spike activity
@@ -771,7 +770,6 @@ class Experiment:
 
                 pred = torch.argmax(output, dim=1)
                 accs.append(np.mean((y == pred).detach().cpu().numpy()))
-
                 epoch_spike_rate += torch.mean(firing_rates)
 
             valid_loss = np.mean(losses)
