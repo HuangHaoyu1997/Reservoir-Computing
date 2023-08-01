@@ -1,6 +1,6 @@
 '''
 首修2023年7月26日20:30:22
-
+大修2023年8月1日04:30:33
 '''
 import torch
 import torch.nn as nn
@@ -20,7 +20,7 @@ class config:
     nb_inputs = 700
     nb_outputs = 20
     nb_layers = 3               # Number of layers (including readout layer).
-    nb_hiddens = 1024           # Number of neurons in all hidden layers.
+    nb_hiddens = 256            # Number of neurons in all hidden layers.
     nb_steps = 100
     pdrop = 0.1                 # Dropout rate, must be between 0 and 1.
     normalization = "batchnorm" # Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.
@@ -34,7 +34,7 @@ class config:
     new_exp_folder = './log/' + date      # Path to output folder to store experiment.
     dataset_name = 'shd'        # ["shd", "ssc"]
     data_folder = "./data/raw/"
-    batch_size = 256
+    batch_size = 128
     nb_epochs = 30
     
     train_input_layer = True
@@ -387,19 +387,12 @@ class Experiment:
         for e in range(best_epoch + 1, best_epoch + config.nb_epochs + 1):
             train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
             best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
-            
-            if config.dropout>0:
-                if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
-                    m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                    m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                    mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
 
         logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
         logging.info("\n------ Training finished ------\n")
 
         # Loading best model
-        # self.net = torch.load(f"{self.checkpoint_dir}best_model-{best_acc}.tar", map_location=config.device)[0]
-        # self.mask = torch.load(f"{self.checkpoint_dir}best_model-{best_acc}.tar", map_location=config.device)[1]
+        # self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=config.device)
         # logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
 
         # Test trained model
@@ -485,39 +478,6 @@ class Experiment:
                 reg_quiet = F.relu(config.reg_fmin - firing_rates).sum()
                 reg_burst = F.relu(firing_rates - config.reg_fmax).sum()
                 loss_val += config.reg_factor * (reg_quiet + reg_burst)
-            
-            # clustering for first layer
-            cluster_ins1, cluster_outs1 = [], []
-            global_mean = 0
-            for i in range(config.nb_cluster):
-                cluster_mean = self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1)
-                global_mean += cluster_mean
-                cluster_in = F.cosine_similarity(self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster], cluster_mean, dim=1)
-                cluster_ins1.append(cluster_in.mean())
-            for i in range(config.nb_cluster):
-                cluster_outs1.append(F.cosine_similarity(self.net.snn[0].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
-            cin1 = torch.var(torch.stack(cluster_ins1)); cout1 = torch.var(torch.stack(cluster_outs1))
-            
-            # for second layer
-            cluster_ins2, cluster_outs2 = [], []
-            global_mean = 0
-            for i in range(config.nb_cluster):
-                cluster_mean = self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1)
-                global_mean += cluster_mean
-                cluster_in = F.cosine_similarity(self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster], cluster_mean, dim=1)
-                cluster_ins2.append(cluster_in.mean())
-            for i in range(config.nb_cluster):
-                cluster_outs2.append(F.cosine_similarity(self.net.snn[1].V.weight[i*config.nb_per_cluster:(i+1)*config.nb_per_cluster, i*config.nb_per_cluster:(i+1)*config.nb_per_cluster].mean(1), global_mean, dim=0))
-            cin2 = torch.var(torch.stack(cluster_ins2)); cout2 = torch.var(torch.stack(cluster_outs2))
-            if config.clustering:
-                print('1',loss_val)
-                loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin1) + F.relu(cin1 - config.cin_minmax[1]))
-                print('2',loss_val)
-                loss_val += config.clustering_factor[0] * (F.relu(config.cin_minmax[0] - cin2) + F.relu(cin2 - config.cin_minmax[1]))
-                print('3',loss_val)
-                loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout1) + F.relu(cout1 - config.cout_minmax[1]))
-                loss_val += config.clustering_factor[1] * (F.relu(config.cout_minmax[0] - cout2) + F.relu(cout2 - config.cout_minmax[1]))
-                print("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f"%(cin1.item(), cin2.item(), cout1.item(), cout2.item(), cout1.item()/cin1.item(), cout2.item()/cin2.item()))
 
             losses.append(loss_val.item())
             self.optimizer.zero_grad()
@@ -534,7 +494,7 @@ class Experiment:
         train_acc = np.mean(accs)
         epoch_spike_rate /= step
         elapsed = str(timedelta(seconds=time.time() - start))[5:]
-        logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}, cin={cin1.item():.6f}, {cin2.item():.6f}, cout={cout1.item():.6f}, {cout2.item():.6f}")
+        logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}")
         return train_acc
     
     def valid_one_epoch(self, trial, e, mask, best_epoch, best_acc):
@@ -544,7 +504,7 @@ class Experiment:
             losses, accs, epoch_spike_rate = [], [], 0
 
             for step, (x, _, y) in enumerate(self.valid_loader):
-                x += torch.rand_like(x) * config.noise_test
+
                 x = x.to(config.device); y = y.to(config.device)
                 output, firing_rates, all_spikes = self.net(x, mask)
                 loss_val = self.loss_fn(output, y)
@@ -568,7 +528,7 @@ class Experiment:
             # Update best epoch and accuracy
             if valid_acc > best_acc:
                 best_acc = valid_acc; best_epoch = e
-                if valid_acc > 0.85: torch.save([self.net, mask], f"{self.checkpoint_dir}/best_model-{valid_acc}.tar")
+                torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
                 logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
@@ -583,7 +543,7 @@ class Experiment:
             for step, (x, _, y) in enumerate(test_loader):
                 x = x.to(config.device)
                 y = y.to(config.device)
-                output, firing_rates, all_spikes = self.net(x, mask)
+                output, firing_rates = self.net(x, mask)
 
                 # Compute loss
                 loss_val = self.loss_fn(output, y)

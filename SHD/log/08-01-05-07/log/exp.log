@@ -1,0 +1,160 @@
+===== Exp configuration =====
+neuron_type:		RadLIF
+nb_inputs:		700
+nb_outputs:		20
+nb_layers:		3
+nb_hiddens:		256
+nb_steps:		100
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		08-01-05-07
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/08-01-05-07
+dataset_name:		shd
+data_folder:		./data/raw/
+batch_size:		128
+nb_epochs:		30
+train_input_layer:		True
+trial:		5
+seed:		-100
+dropout:		0
+dropout_stop:		0.95
+dropout_stepping:		0.0
+ckpt_freq:		5
+clustering:		False
+clustering_factor:		[1, 2.5]
+cin_minmax:		[0.001, 0.05]
+cout_minmax:		[0.05, 0.2]
+nb_cluster:		8
+nb_per_cluster:		32
+noise_test:		0.0
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+checkpoint_dir: ./log/08-01-05-07/checkpoints/
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RadLIFLayer(
+      (W): Linear(in_features=256, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 384060
+
+------ Begin training ------
+
+Epoch 1: train loss=2.4831, acc=0.2884, fr=0.0785, lr=0.0100, time=32.709230
+Epoch 1: valid loss=1.6099, acc=0.4543, fr=0.0888, time=04.513193
+
+Best model saved with valid acc=0.45430871212121215
+
+-----------------------------
+
+Epoch 2: train loss=0.9665, acc=0.6781, fr=0.0927, lr=0.0100, time=27.582646
+Epoch 2: valid loss=0.8122, acc=0.7446, fr=0.0945, time=03.994258
+
+Best model saved with valid acc=0.7446338383838385
+
+-----------------------------
+
+Epoch 3: train loss=0.6373, acc=0.7832, fr=0.0901, lr=0.0100, time=27.805014
+Epoch 3: valid loss=0.7257, acc=0.7862, fr=0.1044, time=04.287596
+
+Best model saved with valid acc=0.7861821338383838
+
+-----------------------------
+
+Epoch 4: train loss=0.3897, acc=0.8698, fr=0.0968, lr=0.0100, time=28.624072
+Epoch 4: valid loss=0.5762, acc=0.8202, fr=0.1002, time=04.720305
+
+Best model saved with valid acc=0.8201941287878788
+
+-----------------------------
+
+Epoch 5: train loss=0.2623, acc=0.9111, fr=0.0975, lr=0.0100, time=31.021580
+Epoch 5: valid loss=0.5344, acc=0.8212, fr=0.1009, time=04.579236
+
+Best model saved with valid acc=0.8211805555555556
+
+-----------------------------
+
+Epoch 6: train loss=0.2089, acc=0.9296, fr=0.1002, lr=0.0100, time=31.519179
+Epoch 6: valid loss=0.3120, acc=0.8960, fr=0.1074, time=04.227414
+
+Best model saved with valid acc=0.8960306186868687
+
+-----------------------------
+
+Epoch 7: train loss=0.1613, acc=0.9457, fr=0.1036, lr=0.0100, time=28.683161
+Epoch 7: valid loss=0.8911, acc=0.7689, fr=0.1065, time=04.632087
+
+-----------------------------
+
+Epoch 8: train loss=0.1394, acc=0.9549, fr=0.1078, lr=0.0100, time=28.920081
+Epoch 8: valid loss=0.2913, acc=0.8945, fr=0.1142, time=04.066122
+
+-----------------------------
+
+Epoch 9: train loss=0.1157, acc=0.9640, fr=0.1104, lr=0.0100, time=27.436492
+Epoch 9: valid loss=0.3733, acc=0.8883, fr=0.1150, time=04.060197
+
+-----------------------------
+
+Epoch 10: train loss=0.0754, acc=0.9766, fr=0.1114, lr=0.0070, time=27.308117
+Epoch 10: valid loss=0.3772, acc=0.8960, fr=0.1164, time=04.063576
+
+-----------------------------
+
+Epoch 11: train loss=0.0528, acc=0.9838, fr=0.1121, lr=0.0070, time=29.128357
+Epoch 11: valid loss=0.5078, acc=0.8655, fr=0.1179, time=04.558509
+
+-----------------------------
+
+Epoch 12: train loss=0.0557, acc=0.9802, fr=0.1138, lr=0.0070, time=30.652003
+Epoch 12: valid loss=0.5172, acc=0.8640, fr=0.1169, time=04.896774
+
+-----------------------------
+
+Epoch 13: train loss=0.0424, acc=0.9851, fr=0.1135, lr=0.0049, time=32.668512
+Epoch 13: valid loss=0.2284, acc=0.9214, fr=0.1197, time=04.833457
+
+Best model saved with valid acc=0.9214015151515151
+
+-----------------------------
+
