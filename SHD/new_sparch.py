@@ -98,6 +98,7 @@ class SNN(nn.Module):
         self.input_shape = (config.batch_size, config.nb_steps, config.nb_inputs)
         self.layer_sizes = [config.nb_hiddens] * (config.nb_layers - 1) + [config.nb_outputs]
         self.input_size = float(torch.prod(torch.tensor(self.input_shape[2:])))
+        self.batch_size = config.batch_size
         self.snn = self._init_layers()
 
     def _init_layers(self):
@@ -132,6 +133,7 @@ class RadLIFLayer(nn.Module):
         # Fixed parameters
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
+        self.batch_size = config.batch_size
         self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
         self.beta_lim = [np.exp(-1 / 30), np.exp(-1 / 120)]
         self.a_lim = [-1.0, 1.0]
@@ -173,6 +175,8 @@ class RadLIFLayer(nn.Module):
         if config.bidirectional:
             x_flip = x.flip(1)
             x = torch.cat([x, x_flip], dim=0)
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
         Wx = self.W(x)
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))

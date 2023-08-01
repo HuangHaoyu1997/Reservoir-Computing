@@ -408,7 +408,6 @@ class SpikingDataset(Dataset):
 
         return xs, xlens, ys
 
-
 def load_shd_or_ssc(
     dataset_name,
     data_folder,
@@ -931,7 +930,7 @@ def add_model_options(parser):
         "--model_type",
         type=str,
         choices=["LIF", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU"],
-        default="LIF",
+        default="RadLIF",
         help="Type of ANN or SNN model.",
     )
     parser.add_argument(
@@ -1031,7 +1030,7 @@ def add_training_options(parser):
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=128,
+        default=256,
         help="Number of input examples inside a single batch.",
     )
     parser.add_argument(

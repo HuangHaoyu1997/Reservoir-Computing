@@ -1,0 +1,128 @@
+===== Exp configuration =====
+neuron_type:		RadLIF
+nb_inputs:		700
+nb_outputs:		20
+nb_layers:		3
+nb_hiddens:		256
+nb_steps:		100
+pdrop:		0.1
+normalization:		batchnorm
+use_bias:		False
+bidirectional:		False
+date:		08-02-01-56
+use_pretrained_model:		False
+only_do_testing:		False
+load_exp_folder:		None
+new_exp_folder:		./log/08-02-01-56
+dataset_name:		shd
+data_folder:		./data/raw/
+batch_size:		128
+nb_epochs:		30
+train_input_layer:		True
+trial:		5
+seed:		-100
+dropout:		0
+dropout_stop:		0.95
+dropout_stepping:		0.0
+ckpt_freq:		5
+clustering:		False
+clustering_factor:		[1, 2.5]
+cin_minmax:		[0.001, 0.05]
+cout_minmax:		[0.05, 0.2]
+nb_cluster:		8
+nb_per_cluster:		32
+noise_test:		0.0
+start_epoch:		0
+lr:		0.01
+scheduler_patience:		2
+scheduler_factor:		0.7
+use_regularizers:		False
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+use_augm:		False
+use_readout_layer:		True
+threshold:		1.0
+device:		cuda
+
+Device is set to cuda
+checkpoint_dir: ./log/08-02-01-56/checkpoints/
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RadLIFLayer(
+      (W): Linear(in_features=256, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 384060
+
+---------------Trial:1---------------
+
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): RadLIFLayer(
+      (W): Linear(in_features=256, out_features=256, bias=False)
+      (V): Linear(in_features=256, out_features=256, bias=False)
+      (norm): BatchNorm1d(256, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (2): ReadoutLayer(
+      (W): Linear(in_features=256, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 384060
+
+------ Begin training ------
+
+Epoch 1: train loss=8.7979, acc=0.0536, fr=0.0669, lr=0.0100, time=31.192403
+Epoch 1: valid loss=4.8764, acc=0.0516, fr=0.0683, mask=0.8750, time=04.091361
+
+Best model saved with valid acc=0.05157039141414141
+
+-----------------------------
+
+Epoch 2: train loss=8.8433, acc=0.0521, fr=0.0669, lr=0.0100, time=28.511166
+Epoch 2: valid loss=8.6415, acc=0.0544, fr=0.0701, mask=0.8750, time=04.213419
+
+Best model saved with valid acc=0.054411300505050504
+
+-----------------------------
+
+Epoch 3: train loss=8.9577, acc=0.0507, fr=0.0669, lr=0.0100, time=28.122438
+Epoch 3: valid loss=8.8930, acc=0.0449, fr=0.0696, mask=0.8750, time=04.128498
+
+-----------------------------
+
