@@ -38,7 +38,7 @@ class config:
     
     train_input_layer = True
     trial = 5
-    seed = -100 # round(time.time())
+    seed = 100 # round(time.time())
     dropout = 0
     dropout_stop = 0.95
     dropout_stepping = 0.0
@@ -90,10 +90,8 @@ class SNN(nn.Module):
     with shape (batch, time, feats) or (batch, feats) respectively, as well
     as the firing rates of all hidden neurons with shape (num_layers*feats).
     """
-
     def __init__(self, input_shape, layer_sizes,):
         super().__init__()
-
         # Fixed parameters
         self.reshape = True if len(input_shape) > 3 else False
         self.input_size = float(torch.prod(torch.tensor(input_shape[2:])))
@@ -118,19 +116,16 @@ class SNN(nn.Module):
             snn.append(ReadoutLayer(input_size=input_size, hidden_size=self.layer_sizes[-1], batch_size=self.batch_size,))
         return snn
 
-    def forward(self, x):
-
+    def forward(self, x, mask):
         # Reshape input tensors to (batch, time, feats) for 4d inputs
         if self.reshape:
             if x.ndim == 4:
                 x = x.reshape(x.shape[0], x.shape[1], x.shape[2] * x.shape[3])
             else:
                 raise NotImplementedError
-
-        # Process all layers
         all_spikes = []
         for i, snn_layer in enumerate(self.snn):
-            x = snn_layer(x)
+            x = snn_layer(x, mask[i])
             if not (config.use_readout_layer and i == self.num_layers - 1):
                 all_spikes.append(x)
         firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1)) # Compute mean firing rate of each spiking neuron
@@ -178,7 +173,7 @@ class RadLIFLayer(nn.Module):
         #     for name, p in self.named_parameters():
         #         if 'W' in name: p.requires_grad = False
 
-    def forward(self, x):
+    def forward(self, x, mask):
         # x.shape = [batch, nb_steps, input]
         # Wx.shape = [batch, nb_steps, hid]
         # Concatenate flipped sequence on batch dim
@@ -187,11 +182,10 @@ class RadLIFLayer(nn.Module):
             x = torch.cat([x, x_flip], dim=0)
         if self.batch_size != x.shape[0]: self.batch_size = x.shape[0]
         Wx = self.W(x) # Feed-forward affine transformations (all steps in parallel)
-
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
-        s = self.mem_update(Wx) # s.shape=[batch, nb_steps, hid]
+        s = self.mem_update(Wx, mask) # s.shape=[batch, nb_steps, hid]
         # Concatenate forward and backward sequences on feat dim
         if config.bidirectional:
             s_f, s_b = s.chunk(2, dim=0)
@@ -200,7 +194,7 @@ class RadLIFLayer(nn.Module):
         s = self.drop(s)
         return s
 
-    def mem_update(self, Wx):
+    def mem_update(self, Wx, mask):
         ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device) # [batch, hid]
         wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
         st = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
@@ -211,7 +205,7 @@ class RadLIFLayer(nn.Module):
         beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
         a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
         b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
-
+        if config.dropout > 0: self.V.weight.data = self.V.weight.data * mask.T
         V = self.V.weight.clone().fill_diagonal_(0) # Set diagonal elements of recurrent matrix to zero
         for t in range(Wx.shape[1]):
             wt = beta * wt + a * ut + b * st
@@ -247,7 +241,7 @@ class ReadoutLayer(nn.Module):
 
         self.drop = nn.Dropout(p=config.pdrop)
 
-    def forward(self, x):
+    def forward(self, x, mask):
         Wx = self.W(x) # Feed-forward affine transformations (all steps in parallel)
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
@@ -349,10 +343,11 @@ class Experiment:
     def __init__(self,):
         self.new_exp_folder = config.new_exp_folder
         self.batch_size = config.batch_size
-
         # Initialize logging and output folders
         self.init_exp_folders()
-        self.init_logging()
+        self.set_seed(config.seed)
+        logging.FileHandler(filename=self.log_dir + "exp.log", mode="a", encoding=None, delay=False,)
+        logging.basicConfig(filename=self.log_dir + "exp.log", level=logging.INFO, format="%(message)s", filemode='a',)
         logging.info("===== Exp configuration =====")
         for var in vars(config):
             if var[0] != '_': 
@@ -381,8 +376,9 @@ class Experiment:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
     
-    def forward(self):
+    def forward(self, trial):
         if not config.only_do_testing:
+            self.init_model()
             train_accs, valid_accs = [], []
             # Initialize best accuracy
             if config.use_pretrained_model:
@@ -394,23 +390,32 @@ class Experiment:
             # Loop over epochs (training + validation)
             logging.info("\n------ Begin training ------\n")
 
+            m1 = init_mask(); m2 = init_mask()
+            # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
             for e in range(best_epoch + 1, best_epoch + config.nb_epochs + 1):
-                train_acc = self.train_one_epoch(e); train_accs.append(train_acc)
-                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc); valid_accs.append(best_acc)
+                train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
+                best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
 
+                if config.dropout>0:
+                    if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
+                        m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                        m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                        mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
 
         # Loading best model
         # self.net = torch.load(f"{self.checkpoint_dir}/best_model-{best_acc}.tar", map_location=config.device)[0]
-        
+        # self.mask = torch.load(f"{self.checkpoint_dir}best_model-{best_acc}.tar", map_location=config.device)[1]
         # logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
 
         # Test trained model
         # if config.dataset_name == "ssc":
-        #     self.test_one_epoch(self.test_loader)
+        #     self.test_one_epoch(self.test_loader, self.mask)
         # else:
-        #     self.test_one_epoch(self.valid_loader)
+        #     self.test_one_epoch(self.valid_loader, self.mask)
         #     logging.info("\nThis dataset uses the same split for validation and testing.\n")
         
         return np.array(train_accs), np.array(valid_accs)
@@ -452,10 +457,6 @@ class Experiment:
 
         self.exp_folder = exp_folder
 
-    def init_logging(self):
-        logging.FileHandler(filename=self.log_dir + "exp.log", mode="a", encoding=None, delay=False,)
-        logging.basicConfig(filename=self.log_dir + "exp.log", level=logging.INFO, format="%(message)s",)
-
     def init_dataset(self):
         """This function prepares dataloaders for the desired dataset."""
         self.train_loader = load_shd_or_ssc(split="train", batch_size=self.batch_size, shuffle=True,)
@@ -480,14 +481,14 @@ class Experiment:
         self.nb_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         logging.info(f"Total number of trainable parameters is {self.nb_params}")
 
-    def train_one_epoch(self, e):
+    def train_one_epoch(self, e, mask):
         start = time.time()
         self.net.train()
         losses, accs, epoch_spike_rate = [], [], 0
 
         for step, (x, _, y) in enumerate(self.train_loader):
             x = x.to(config.device); y = y.to(config.device)
-            output, firing_rates, all_spikes = self.net(x)
+            output, firing_rates, all_spikes = self.net(x, mask)
             loss_val = self.loss_fn(output, y)
 
             # Spike activity
@@ -515,16 +516,16 @@ class Experiment:
         logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed},")
         return train_acc
     
-    def valid_one_epoch(self, e, best_epoch, best_acc):
+    def valid_one_epoch(self, trial, e, mask, best_epoch, best_acc):
         start = time.time()
         with torch.no_grad():
             self.net.eval()
             losses, accs, epoch_spike_rate = [], [], 0
 
             for step, (x, _, y) in enumerate(self.valid_loader):
-                # x += torch.rand_like(x) * config.noise_test
+                x += torch.rand_like(x) * config.noise_test
                 x = x.to(config.device); y = y.to(config.device)
-                output, firing_rates, all_spikes = self.net(x)
+                output, firing_rates, all_spikes = self.net(x, mask)
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
 
@@ -536,21 +537,23 @@ class Experiment:
             valid_acc = np.mean(accs)
             epoch_spike_rate /= step
             elapsed = str(timedelta(seconds=time.time() - start))[5:]
-            
-            logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, time={elapsed}")
+            sparsity = ((mask[0]==0).sum().item()/config.nb_hiddens**2 + (mask[1]==0).sum().item()/config.nb_hiddens**2)/2
+            logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, mask={sparsity:.4f}, time={elapsed}")
 
             self.scheduler.step(valid_acc)
 
+            if e % config.ckpt_freq == 0:
+                torch.save([self.net, mask], self.checkpoint_dir+'/model-{:d}-{:d}-{:.4f}.tar'.format(trial, e, valid_acc))
             # Update best epoch and accuracy
             if valid_acc > best_acc:
                 best_acc = valid_acc; best_epoch = e
-                if valid_acc > 0.85: torch.save(self.net, f"{self.checkpoint_dir}/best_model-{valid_acc}.pth")
+                if valid_acc > 0.85: torch.save([self.net, mask], f"{self.checkpoint_dir}/best_model-{valid_acc}.tar")
                 logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
             return best_epoch, best_acc
 
-    def test_one_epoch(self, test_loader):
+    def test_one_epoch(self, test_loader, mask):
         with torch.no_grad():
             self.net.eval()
             losses, accs, epoch_spike_rate = [], [], 0
@@ -558,7 +561,7 @@ class Experiment:
             logging.info("\n------ Begin Testing ------\n")
             for step, (x, _, y) in enumerate(test_loader):
                 x = x.to(config.device); y = y.to(config.device)
-                output, firing_rates, all_spikes = self.net(x)
+                output, firing_rates, all_spikes = self.net(x, mask)
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
                 pred = torch.argmax(output, dim=1)
@@ -601,4 +604,11 @@ def plot_errorbar(train_acc_log, test_acc_log, file_name):
 
 if __name__ == "__main__":
     experiment = Experiment()
-    experiment.forward()
+    log = np.zeros((2, config.nb_epochs, config.trial))
+    for i in range(config.trial):
+        logging.info(f"\n---------------Trial:{i+1}---------------\n")
+        experiment.set_seed(config.seed + i + 1)
+        train_accs, valid_accs = experiment.forward(i+1)
+        log[0,:,i] = train_accs
+        log[1,:,i] = valid_accs
+    plot_errorbar(log[0], log[1], './fig/'+ config.date +'.pdf')
