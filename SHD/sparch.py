@@ -57,7 +57,7 @@ class config:
     lr = 1e-2                   # Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.
     scheduler_patience = 2      # Number of epochs without progress before the learning rate gets decreased.
     scheduler_factor = 0.7      # Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.
-    use_regularizers = False    # Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.
+    use_regularizers = True     # Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.
     reg_factor = 0.5            # Factor that scales the loss value from the regularizers.
     reg_fmin = 0.01             # Lowest firing frequency value of spiking neurons for which there is no regularization loss.
     reg_fmax = 0.1              # Highest firing frequency value of spiking neurons for which there is no regularization loss.
@@ -120,7 +120,6 @@ class SNN(nn.Module):
             x = snn_layer(x, mask[i])
             if not (config.use_readout_layer and i == config.nb_layers - 1):
                 all_spikes.append(x)
-
         firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1)) # Compute mean firing rate of each spiking neuron
         return x, firing_rates, all_spikes
 
@@ -151,7 +150,6 @@ class RadLIFLayer(nn.Module):
         nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
         nn.init.orthogonal_(self.V.weight)
 
-        # Initialize normalization
         self.normalize = False
         if config.normalization == "batchnorm":
             self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
@@ -172,7 +170,7 @@ class RadLIFLayer(nn.Module):
         if config.bidirectional:
             x_flip = x.flip(1)
             x = torch.cat([x, x_flip], dim=0)
-        Wx = self.W(x)
+        Wx = self.W(x) # Feed-forward affine transformations (all steps in parallel)
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
@@ -251,10 +249,8 @@ class ReadoutLayer(nn.Module):
 
 class SpikingDataset(Dataset):
     """
-    Dataset class for the Spiking Heidelberg Digits (SHD) or
-    Spiking Speech Commands (SSC) dataset.
+    Dataset class for the Spiking Heidelberg Digits (SHD) or Spiking Speech Commands (SSC) dataset.
     ---------
-    data_folder : str, Path to folder containing the dataset (h5py file).
     split : str, Split of the SHD dataset, must be either "train" or "test".
     """
 
@@ -332,7 +328,7 @@ def init_mask():
 
 class Experiment:
     """Training and testing models on SHD and SSC datasets."""
-    def __init__(self):
+    def __init__(self,):
         # Initialize logging and output folders
         self.init_exp_folders()
         self.set_seed(config.seed)
@@ -367,38 +363,39 @@ class Experiment:
             torch.backends.cudnn.benchmark = False
     
     def forward(self, trial):
-        self.init_model()
-        train_accs, valid_accs = [], []
-        # Initialize best accuracy
-        if config.use_pretrained_model:
-            logging.info("\n------ Using pretrained model ------\n")
-            best_epoch, best_acc = self.valid_one_epoch(config.start_epoch, 0, 0)
-        else:
-            best_epoch, best_acc = 0, 0
+        if not config.only_do_testing:
+            self.init_model()
+            train_accs, valid_accs = [], []
+            # Initialize best accuracy
+            if config.use_pretrained_model:
+                logging.info("\n------ Using pretrained model ------\n")
+                best_epoch, best_acc = self.valid_one_epoch(config.start_epoch, 0, 0)
+            else:
+                best_epoch, best_acc = 0, 0
 
-        # Loop over epochs (training + validation)
-        logging.info("\n------ Begin training ------\n")
+            # Loop over epochs (training + validation)
+            logging.info("\n------ Begin training ------\n")
 
-        m1 = init_mask(); m2 = init_mask()
-        # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-        # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
-        mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
-        
-        for e in range(best_epoch + 1, best_epoch + config.nb_epochs + 1):
-            train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
-            best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
+            m1 = init_mask(); m2 = init_mask()
+            # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
             
-            if config.dropout>0:
-                if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
-                    m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                    m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
-                    mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
+            for e in range(best_epoch + 1, best_epoch + config.nb_epochs + 1):
+                train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
+                best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
+                
+                if config.dropout>0:
+                    if (m1==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop or (m2==0).sum().item()/config.nb_hiddens**2 <= config.dropout_stop:
+                        m1 = m1&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                        m2 = m2&((torch.rand(config.nb_hiddens, config.nb_hiddens) > config.dropout_stepping).int() * (1-torch.eye(config.nb_hiddens, config.nb_hiddens)).int())
+                        mask = [m1.float().to(config.device), m2.float().to(config.device), 0]
 
-        logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
-        logging.info("\n------ Training finished ------\n")
+            logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
+            logging.info("\n------ Training finished ------\n")
 
         # Loading best model
-        # self.net = torch.load(f"{self.checkpoint_dir}best_model-{best_acc}.tar", map_location=config.device)[0]
+        # self.net = torch.load(f"{self.checkpoint_dir}/best_model-{best_acc}.tar", map_location=config.device)[0]
         # self.mask = torch.load(f"{self.checkpoint_dir}best_model-{best_acc}.tar", map_location=config.device)[1]
         # logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
 
@@ -581,15 +578,10 @@ class Experiment:
 
             logging.info("\n------ Begin Testing ------\n")
             for step, (x, _, y) in enumerate(test_loader):
-                x = x.to(config.device)
-                y = y.to(config.device)
+                x = x.to(config.device); y = y.to(config.device)
                 output, firing_rates, all_spikes = self.net(x, mask)
-
-                # Compute loss
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
-
-                # Compute accuracy with labels
                 pred = torch.argmax(output, dim=1)
                 acc = np.mean((y == pred).detach().cpu().numpy())
                 accs.append(acc)
