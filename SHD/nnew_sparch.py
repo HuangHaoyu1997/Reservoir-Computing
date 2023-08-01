@@ -466,8 +466,8 @@ class Experiment:
             logging.warning("\nWarning: Data augmentation not implemented for SHD and SSC.\n")
 
     def init_model(self):
-        input_shape = (self.batch_size, None, self.nb_inputs)
-        layer_sizes = [config.nb_hiddens] * (config.nb_layers - 1) + [self.nb_outputs]
+        input_shape = (self.batch_size, None, config.nb_inputs)
+        layer_sizes = [config.nb_hiddens] * (config.nb_layers - 1) + [config.nb_outputs]
 
         if config.use_pretrained_model:
             self.net = torch.load(self.load_path, map_location=config.device)
