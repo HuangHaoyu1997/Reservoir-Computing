@@ -44,6 +44,7 @@ def add_training_options(parser):
     parser.add_argument("--seed",                 type=int,   default=-100,) # round(time.time())
     parser.add_argument("--ckpt_freq",            type=int,   default=5,)
     parser.add_argument("--threshold",            type=float, default=1.0,)
+    parser.add_argument("--date",                 type=str,   default=date,)
     
     parser.add_argument("--model_type",        type=str,    default="RadLIF",    help="Type of ANN or SNN model.",)
     parser.add_argument("--nb_layers",         type=int,    default=2,           help="Number of layers (including readout layer).",)
@@ -141,23 +142,10 @@ class SNN(nn.Module):
     """
     A multi-layered Spiking Neural Network (SNN).
     It accepts input tensors formatted as (batch, time, feat). 
-    The function returns the outputs of the last spiking or readout layer
-    with shape (batch, time, feats) or (batch, feats) respectively, as well
-    as the firing rates of all hidden neurons with shape (num_layers*feats).
+    The function returns the outputs of the last spiking or readout layer with shape (batch, time, feats) or (batch, feats) respectively, as well as the firing rates of all hidden neurons with shape (num_layers*feats).
     """
 
-    def __init__(
-        self,
-        input_shape,
-        layer_sizes,
-        neuron_type="LIF",
-        threshold=1.0,
-        dropout=0.0,
-        normalization="batchnorm",
-        use_bias=False,
-        bidirectional=False,
-        use_readout_layer=True,
-    ):
+    def __init__(self, input_shape, layer_sizes, neuron_type, threshold, dropout, normalization, use_bias, bidirectional, use_readout_layer, train_input):
         super().__init__()
 
         # Fixed parameters
@@ -174,7 +162,7 @@ class SNN(nn.Module):
         self.use_bias = use_bias
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
-        self.is_snn = True
+        self.train_input = train_input
         self.snn = self._init_layers()
 
     def _init_layers(self):
@@ -196,6 +184,7 @@ class SNN(nn.Module):
                     normalization=self.normalization,
                     use_bias=self.use_bias,
                     bidirectional=self.bidirectional,
+                    train_input=self.train_input
                 )
             )
             input_size = self.layer_sizes[i] * (1 + self.bidirectional)
@@ -211,7 +200,6 @@ class SNN(nn.Module):
                     use_bias=self.use_bias,
                 )
             )
-
         return snn
 
     def forward(self, x, mask):
@@ -233,17 +221,7 @@ class SNN(nn.Module):
 
 class RadLIFLayer(nn.Module):
     """A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RadLIF)."""
-    def __init__(
-        self,
-        input_size,
-        hidden_size,
-        batch_size,
-        threshold=1.0,
-        dropout=0.0,
-        normalization="batchnorm",
-        use_bias=False,
-        bidirectional=False,
-    ):
+    def __init__(self, input_size, hidden_size, batch_size, threshold, dropout, normalization, use_bias, bidirectional, train_input):
         super().__init__()
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
@@ -253,6 +231,7 @@ class RadLIFLayer(nn.Module):
         self.normalization = normalization
         self.use_bias = use_bias
         self.bidirectional = bidirectional
+        self.train_input = train_input
         self.batch_size = self.batch_size * (1 + self.bidirectional)
         self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
         self.beta_lim = [np.exp(-1 / 30), np.exp(-1 / 120)]
@@ -284,26 +263,23 @@ class RadLIFLayer(nn.Module):
             self.normalize = True
         self.drop = nn.Dropout(p=dropout)
         
-        # if not config.train_input_layer:
-        #     for name, p in self.named_parameters():
-        #         if 'W' in name: p.requires_grad = False
+        if not self.train_input:
+            for name, p in self.named_parameters():
+                if 'W' in name: p.requires_grad = False
 
     def forward(self, x, mask):
         # x.shape = [batch, nb_steps, input]
         # Wx.shape = [batch, nb_steps, hid]
-        # Concatenate flipped sequence on batch dim
-        if self.bidirectional:
+        if self.bidirectional: # Concatenate flipped sequence on batch dim
             x_flip = x.flip(1)
             x = torch.cat([x, x_flip], dim=0)
-        if self.batch_size != x.shape[0]:
-            self.batch_size = x.shape[0]
+        if self.batch_size != x.shape[0]: self.batch_size = x.shape[0]
         Wx = self.W(x)
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
         s = self.mem_update(Wx) # s.shape=[batch, nb_steps, hid]
-        # Concatenate forward and backward sequences on feat dim
-        if self.bidirectional:
+        if self.bidirectional: # Concatenate forward and backward sequences on feat dim
             s_f, s_b = s.chunk(2, dim=0)
             s_b = s_b.flip(1)
             s = torch.cat([s_f, s_b], dim=2)
@@ -338,15 +314,7 @@ class ReadoutLayer(nn.Module):
     membrane potential using a softmax function, instead of spikes.
     """
 
-    def __init__(
-        self,
-        input_size,
-        hidden_size,
-        batch_size,
-        dropout=0.0,
-        normalization="batchnorm",
-        use_bias=False,
-    ):
+    def __init__(self, input_size, hidden_size, batch_size, dropout, normalization="batchnorm", use_bias=False,):
         super().__init__()
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
@@ -389,19 +357,7 @@ class ReadoutLayer(nn.Module):
         return out
 
 class SpikingDataset(Dataset):
-    """
-    Dataset class for the Spiking Heidelberg Digits (SHD) or
-    Spiking Speech Commands (SSC) dataset.
-    """
-
-    def __init__(
-        self,
-        dataset_name,
-        data_folder,
-        split,
-        nb_steps=100,
-    ):
-
+    def __init__(self, dataset_name, data_folder, split, nb_steps=100,):
         # Fixed parameters
         self.device = "cpu"  # to allow pin memory
         self.nb_steps = nb_steps
@@ -420,7 +376,6 @@ class SpikingDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index):
-
         times = np.digitize(self.firing_times[index], self.time_bins)
         units = self.units_fired[index]
 
@@ -433,7 +388,6 @@ class SpikingDataset(Dataset):
         return x.to_dense(), y
 
     def generateBatch(self, batch):
-
         xs, ys = zip(*batch)
         xs = torch.nn.utils.rnn.pad_sequence(xs, batch_first=True)
         xlens = torch.tensor([x.shape[0] for x in xs])
@@ -441,16 +395,7 @@ class SpikingDataset(Dataset):
 
         return xs, xlens, ys
 
-
-def load_shd_or_ssc(
-    dataset_name,
-    data_folder,
-    split,
-    batch_size,
-    nb_steps=100,
-    shuffle=True,
-    workers=0,
-):
+def load_shd_or_ssc(dataset_name, data_folder, split, batch_size, nb_steps=100, shuffle=True, workers=0,):
     if dataset_name == "shd" and split == "valid":
         logging.info("SHD does not have a validation split. Using test split.")
         split = "test"
@@ -501,8 +446,11 @@ class Experiment:
         self.reg_fmax = args.reg_fmax
         self.use_augm = args.use_augm
         self.nb_steps = args.nb_steps
+        self.train_input = args.train_input
+        self.noise_test = args.noise_test
+        self.seed = args.seed
 
-        # Initialize logging and output folders
+        self.set_seed(self.seed)
         self.init_exp_folders()
         self.init_logging()
         print_options(args)
@@ -530,7 +478,7 @@ class Experiment:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-    def forward(self):
+    def forward(self, trial):
         if not self.only_do_testing:
             train_accs, valid_accs = [], []
             # Initialize best accuracy
@@ -609,31 +557,10 @@ class Experiment:
             self.nb_inputs = 700
             self.nb_outputs = 20 if self.dataset_name == "shd" else 35
 
-            self.train_loader = load_shd_or_ssc(
-                dataset_name=self.dataset_name,
-                data_folder=self.data_folder,
-                split="train",
-                batch_size=self.batch_size,
-                nb_steps=self.nb_steps,
-                shuffle=True,
-            )
-            self.valid_loader = load_shd_or_ssc(
-                dataset_name=self.dataset_name,
-                data_folder=self.data_folder,
-                split="valid",
-                batch_size=self.batch_size,
-                nb_steps=self.nb_steps,
-                shuffle=False,
-            )
+            self.train_loader = load_shd_or_ssc(dataset_name=self.dataset_name, data_folder=self.data_folder, split="train", batch_size=self.batch_size, nb_steps=self.nb_steps, shuffle=True,)
+            self.valid_loader = load_shd_or_ssc(dataset_name=self.dataset_name, data_folder=self.data_folder, split="valid", batch_size=self.batch_size, nb_steps=self.nb_steps, shuffle=False,)
             if self.dataset_name == "ssc":
-                self.test_loader = load_shd_or_ssc(
-                    dataset_name=self.dataset_name,
-                    data_folder=self.data_folder,
-                    split="test",
-                    batch_size=self.batch_size,
-                    nb_steps=self.nb_steps,
-                    shuffle=False,
-                )
+                self.test_loader = load_shd_or_ssc(dataset_name=self.dataset_name, data_folder=self.data_folder, split="test", batch_size=self.batch_size, nb_steps=self.nb_steps, shuffle=False,)
             if self.use_augm:
                 logging.warning("\nWarning: Data augmentation not implemented for SHD and SSC.\n")
 
@@ -656,6 +583,7 @@ class Experiment:
                 use_bias=self.use_bias,
                 bidirectional=self.bidirectional,
                 use_readout_layer=True,
+                train_input=self.train_input
             ).to(self.device)
 
             logging.info(f"\nCreated new spiking model:\n {self.net}\n")
@@ -702,6 +630,7 @@ class Experiment:
             self.net.eval()
             losses, accs, epoch_spike_rate = [], [], 0
             for step, (x, _, y) in enumerate(self.valid_loader):
+                x += torch.rand_like(x) * self.noise_test
                 x = x.to(self.device); y = y.to(self.device)
                 output, firing_rates, all_spikes = self.net(x, [0,0,0])
                 loss_val = self.loss_fn(output, y)
@@ -717,10 +646,8 @@ class Experiment:
             elapsed = str(timedelta(seconds=time.time() - start))[5:]
             sparsity = 0
             logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, mask={sparsity:.4f}, time={elapsed}")
-
             self.scheduler.step(valid_acc)
 
-            # Update best epoch and accuracy
             if valid_acc > best_acc:
                 best_acc = valid_acc; best_epoch = e
                 torch.save(self.net, f"{self.checkpoint_dir}/best_model_{valid_acc}.pth")
@@ -736,12 +663,12 @@ class Experiment:
 
             logging.info("\n------ Begin Testing ------\n")
             for step, (x, _, y) in enumerate(test_loader):
+                x += torch.rand_like(x) * self.noise_test
                 x = x.to(self.device); y = y.to(self.device)
                 output, firing_rates, all_spikes = self.net(x, [0,0,0])
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
 
-                # Compute accuracy with labels
                 pred = torch.argmax(output, dim=1)
                 acc = np.mean((y == pred).detach().cpu().numpy())
                 accs.append(acc)
@@ -786,6 +713,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     experiment = Experiment(args)
 
-    # Run experiment
-    experiment.forward()
-    plot_errorbar(args, )
+    log = np.zeros((2, args.nb_epochs, args.trial))
+    for i in range(args.trial):
+        logging.info(f"\n---------------Trial:{i+1}---------------\n")
+        experiment.set_seed(args.seed + i + 1)
+        train_accs, valid_accs = experiment.forward(i+1)
+        log[0,:,i] = train_accs
+        log[1,:,i] = valid_accs
+    plot_errorbar(args, log[0], log[1], './fig/'+ args.date +'.pdf')
