@@ -430,7 +430,6 @@ class SpikingDataset(Dataset):
 
         x = torch.sparse.FloatTensor(x_idx, x_val, x_size).to(self.device)
         y = self.labels[index]
-
         return x.to_dense(), y
 
     def generateBatch(self, batch):
@@ -452,16 +451,6 @@ def load_shd_or_ssc(
     shuffle=True,
     workers=0,
 ):
-    """
-    This function creates a dataloader for a given split of
-    the SHD or SSC datasets.
-    """
-    if dataset_name not in ["shd", "ssc"]:
-        raise ValueError(f"Invalid dataset name {dataset_name}")
-
-    if split not in ["train", "valid", "test"]:
-        raise ValueError(f"Invalid split name {split}")
-
     if dataset_name == "shd" and split == "valid":
         logging.info("SHD does not have a validation split. Using test split.")
         split = "test"
@@ -480,13 +469,7 @@ def load_shd_or_ssc(
     return loader
 
 class Experiment:
-    """
-    Class for training and testing models (ANNs and SNNs) on all four
-    datasets for speech command recognition (shd, ssc, hd and sc).
-    """
-
     def __init__(self, args):
-
         # New model config
         self.model_type = args.model_type
         self.nb_layers = args.nb_layers
@@ -495,6 +478,7 @@ class Experiment:
         self.normalization = args.normalization
         self.use_bias = args.use_bias
         self.bidirectional = args.bidirectional
+        self.threshold = args.threshold
 
         # Training config
         self.use_pretrained_model = args.use_pretrained_model
@@ -556,9 +540,7 @@ class Experiment:
             else:
                 best_epoch, best_acc = 0, 0
 
-            # Loop over epochs (training + validation)
             logging.info("\n------ Begin training ------\n")
-
             for e in range(best_epoch + 1, best_epoch + self.nb_epochs + 1):
                 train_acc = self.train_one_epoch(e); train_accs.append(train_acc)
                 best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc); valid_accs.append(best_acc)
@@ -571,10 +553,7 @@ class Experiment:
                 self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=self.device)
                 logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
             else:
-                logging.info(
-                    "Cannot load best model because save_best option is "
-                    "disabled. Model from last epoch is used for testing."
-                )
+                logging.info("Cannot load best model because save_best option is disabled. Model from last epoch is used for testing.")
 
         # Test trained model
         if self.dataset_name == "ssc":
@@ -614,11 +593,8 @@ class Experiment:
         # Create folders to store experiment
         self.log_dir = exp_folder + "/log/"
         self.checkpoint_dir = exp_folder + "/checkpoints/"
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        if not os.path.exists(self.checkpoint_dir):
-            os.makedirs(self.checkpoint_dir)
-
+        if not os.path.exists(self.log_dir):         os.makedirs(self.log_dir)
+        if not os.path.exists(self.checkpoint_dir):  os.makedirs(self.checkpoint_dir)
         self.exp_folder = exp_folder
 
     def init_logging(self):
@@ -629,9 +605,7 @@ class Experiment:
             logging.basicConfig(level=logging.INFO, format="%(message)s",)
 
     def init_dataset(self):
-        """This function prepares dataloaders for the desired dataset."""
         if self.dataset_name in ["shd", "ssc"]:
-
             self.nb_inputs = 700
             self.nb_outputs = 20 if self.dataset_name == "shd" else 35
 
@@ -664,10 +638,6 @@ class Experiment:
                 logging.warning("\nWarning: Data augmentation not implemented for SHD and SSC.\n")
 
     def init_model(self):
-        """
-        This function either loads pretrained model or builds a
-        new model (ANN or SNN) depending on chosen config.
-        """
         input_shape = (self.batch_size, None, self.nb_inputs)
         layer_sizes = [self.nb_hiddens] * (self.nb_layers - 1) + [self.nb_outputs]
 
@@ -680,6 +650,7 @@ class Experiment:
                 input_shape=input_shape,
                 layer_sizes=layer_sizes,
                 neuron_type=self.model_type,
+                threshold=self.threshold,
                 dropout=self.pdrop,
                 normalization=self.normalization,
                 use_bias=self.use_bias,
@@ -702,7 +673,6 @@ class Experiment:
             output, firing_rates, all_spikes = self.net(x, [0,0,0])
             loss_val = self.loss_fn(output, y)
 
-            # Spike activity
             epoch_spike_rate += torch.mean(firing_rates)
             if self.use_regularizers:
                 reg_quiet = F.relu(self.reg_fmin - firing_rates).sum()
@@ -718,7 +688,6 @@ class Experiment:
             acc = np.mean((y == pred).detach().cpu().numpy())
             accs.append(acc)
 
-        # Learning rate of whole epoch
         current_lr = self.optimizer.param_groups[-1]["lr"]
         train_loss = np.mean(losses)
         train_acc = np.mean(accs)
@@ -754,7 +723,7 @@ class Experiment:
             # Update best epoch and accuracy
             if valid_acc > best_acc:
                 best_acc = valid_acc; best_epoch = e
-                torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
+                torch.save(self.net, f"{self.checkpoint_dir}/best_model_{valid_acc}.pth")
                 logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
@@ -769,8 +738,6 @@ class Experiment:
             for step, (x, _, y) in enumerate(test_loader):
                 x = x.to(self.device); y = y.to(self.device)
                 output, firing_rates, all_spikes = self.net(x, [0,0,0])
-
-                # Compute loss
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
 
@@ -786,7 +753,7 @@ class Experiment:
             logging.info(f"Test loss={test_loss}, acc={test_acc}, mean act rate={epoch_spike_rate}")
             logging.info("\n-----------------------------\n")
 
-def plot_errorbar(train_acc_log, test_acc_log, file_name):
+def plot_errorbar(args, train_acc_log, test_acc_log, file_name):
     train_mean = np.mean(train_acc_log, axis=1)
     train_std = np.std(train_acc_log, axis=1)
     # train_var = np.var(train_acc_log, axis=1)
@@ -799,13 +766,13 @@ def plot_errorbar(train_acc_log, test_acc_log, file_name):
     # test_max = np.max(test_acc_log, axis=1)
     # test_min = np.min(test_acc_log, axis=1)
 
-    plt.plot(list(range(config.nb_epochs)), train_mean, color='deeppink', label='train')
-    plt.fill_between(list(range(config.nb_epochs)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
-    # plt.fill_between(list(range(config.epoch)), train_min, train_max, color='violet', alpha=0.2)
+    plt.plot(list(range(args.nb_epochs)), train_mean, color='deeppink', label='train')
+    plt.fill_between(list(range(args.nb_epochs)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
+    # plt.fill_between(list(range(args.epoch)), train_min, train_max, color='violet', alpha=0.2)
 
-    plt.plot(list(range(config.nb_epochs)), test_mean, color='blue', label='test')
-    plt.fill_between(list(range(config.nb_epochs)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
-    # plt.fill_between(list(range(config.epoch)), test_min, test_max, color='blue', alpha=0.2)
+    plt.plot(list(range(args.nb_epochs)), test_mean, color='blue', label='test')
+    plt.fill_between(list(range(args.nb_epochs)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
+    # plt.fill_between(list(range(args.epoch)), test_min, test_max, color='blue', alpha=0.2)
 
     plt.legend()
     plt.grid()
@@ -821,3 +788,4 @@ if __name__ == "__main__":
 
     # Run experiment
     experiment.forward()
+    plot_errorbar(args, )
