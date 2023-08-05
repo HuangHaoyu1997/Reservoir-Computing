@@ -130,7 +130,6 @@ class RadLIFLayer(nn.Module):
     """A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RadLIF)."""
     def __init__(self, input_size, hidden_size,):
         super().__init__()
-        # Fixed parameters
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
         self.batch_size = config.batch_size
@@ -248,7 +247,6 @@ class ReadoutLayer(nn.Module):
         ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(config.device)
         out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(config.device)
         alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
-
         for t in range(Wx.shape[1]):
             ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
             out = out + F.softmax(ut, dim=1)
@@ -258,9 +256,6 @@ class SpikingDataset(Dataset):
     """
     Dataset class for the Spiking Heidelberg Digits (SHD) or
     Spiking Speech Commands (SSC) dataset.
-    ---------
-    data_folder : str, Path to folder containing the dataset (h5py file).
-    split : str, Split of the SHD dataset, must be either "train" or "test".
     """
 
     def __init__(self, split,):
@@ -370,7 +365,7 @@ class Experiment:
             torch.cuda.manual_seed_all(seed)
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
-    
+
     def forward(self, trial):
         self.init_model()
         train_accs, valid_accs = [], []
@@ -410,7 +405,7 @@ class Experiment:
         return np.array(train_accs), np.array(valid_accs)
 
     def init_exp_folders(self):
-        """define the output folders for the experiment."""
+        """Define the output folders for the experiment."""
         # Check if path exists for loading pretrained model
         if config.use_pretrained_model:
             exp_folder = config.load_exp_folder
@@ -501,15 +496,13 @@ class Experiment:
         elapsed = str(timedelta(seconds=time.time() - start))[5:]
         logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}")
         return train_acc
-    
+
     def valid_one_epoch(self, trial, e, mask, best_epoch, best_acc):
         start = time.time()
         with torch.no_grad():
             self.net.eval()
             losses, accs, epoch_spike_rate = [], [], 0
-
             for step, (x, _, y) in enumerate(self.valid_loader):
-
                 x = x.to(config.device); y = y.to(config.device)
                 output, firing_rates, all_spikes = self.net(x, mask)
                 loss_val = self.loss_fn(output, y)
@@ -546,8 +539,7 @@ class Experiment:
 
             logging.info("\n------ Begin Testing ------\n")
             for step, (x, _, y) in enumerate(test_loader):
-                x = x.to(config.device)
-                y = y.to(config.device)
+                x = x.to(config.device); y = y.to(config.device)
                 output, firing_rates = self.net(x, mask)
 
                 # Compute loss

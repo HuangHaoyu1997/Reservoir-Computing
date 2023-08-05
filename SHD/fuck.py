@@ -1,141 +1,72 @@
-import logging
+'''
+首修2023年7月26日20:30:22
+大修2023年8月4日17:57:38
+https://github.com/idiap/sparch/blob/main/sparch/models/snns.py
+'''
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from distutils.util import strtobool
-
+import numpy as np
+import matplotlib.pyplot as plt
+import time, warnings, errno, os, h5py, logging, argparse
+warnings.filterwarnings("ignore")
+from datetime import timedelta
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 logger = logging.getLogger(__name__)
 
 
 def add_training_options(parser):
-    parser.add_argument(
-        "--use_pretrained_model",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
-        help="Whether to load a pretrained model or to create a new one.",
-    )
-    parser.add_argument(
-        "--only_do_testing",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
-        help="If True, will skip training and only perform testing of the "
-        "loaded model.",
-    )
-    parser.add_argument(
-        "--load_exp_folder",
-        type=str,
-        default=None,
-        help="Path to experiment folder with a pretrained model to load. Note "
-        "that the same path will be used to store the current experiment.",
-    )
-    parser.add_argument(
-        "--new_exp_folder",
-        type=str,
-        default='./log/fuck_log',
-        help="Path to output folder to store experiment.",
-    )
-    parser.add_argument(
-        "--dataset_name",
-        type=str,
-        choices=["shd", "ssc", "hd", "sc"],
-        default="shd",
-        help="Dataset name (shd, ssc, hd or sc).",
-    )
-    parser.add_argument(
-        "--data_folder",
-        type=str,
-        default="./data/raw/",
-        help="Path to dataset folder.",
-    )
-    parser.add_argument(
-        "--log_tofile",
-        type=lambda x: bool(strtobool(str(x))),
-        default=True,
-        help="Whether to print experiment log in an dedicated file or "
-        "directly inside the terminal.",
-    )
-    parser.add_argument(
-        "--save_best",
-        type=lambda x: bool(strtobool(str(x))),
-        default=True,
-        help="If True, the model from the epoch with the highest validation "
-        "accuracy is saved, if False, no model is saved.",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=256,
-        help="Number of input examples inside a single batch.",
-    )
-    parser.add_argument(
-        "--nb_epochs",
-        type=int,
-        default=50,
-        help="Number of training epochs (i.e. passes through the dataset).",
-    )
-    parser.add_argument(
-        "--start_epoch",
-        type=int,
-        default=0,
-        help="Epoch number to start training at. Will be 0 if no pretrained "
-        "model is given. First epoch will be start_epoch+1.",
-    )
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=1e-2,
-        help="Initial learning rate for training. The default value of 0.01 "
-        "is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",
-    )
-    parser.add_argument(
-        "--scheduler_patience",
-        type=int,
-        default=1,
-        help="Number of epochs without progress before the learning rate "
-        "gets decreased.",
-    )
-    parser.add_argument(
-        "--scheduler_factor",
-        type=float,
-        default=0.7,
-        help="Factor between 0 and 1 by which the learning rate gets "
-        "decreased when the scheduler patience is reached.",
-    )
-    parser.add_argument(
-        "--use_regularizers",
-        type=lambda x: bool(strtobool(str(x))),
-        default=True,
-        help="Whether to use regularizers in order to constrain the "
-        "firing rates of spiking neurons within a given range.",
-    )
-    parser.add_argument(
-        "--reg_factor",
-        type=float,
-        default=0.5,
-        help="Factor that scales the loss value from the regularizers.",
-    )
-    parser.add_argument(
-        "--reg_fmin",
-        type=float,
-        default=0.01,
-        help="Lowest firing frequency value of spiking neurons for which "
-        "there is no regularization loss.",
-    )
-    parser.add_argument(
-        "--reg_fmax",
-        type=float,
-        default=0.2,
-        help="Highest firing frequency value of spiking neurons for which "
-        "there is no regularization loss.",
-    )
-    parser.add_argument(
-        "--use_augm",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
-        help="Whether to use data augmentation or not. Only implemented for "
-        "nonspiking HD and SC datasets.",
-    )
+    date = time.strftime("%Y-%m-%d-%H-%M-%S/", time.localtime(time.time()))[5:16]
+    parser.add_argument("--use_pretrained_model", type=bool,  default=False,            help="Whether to load a pretrained model or to create a new one.",)
+    parser.add_argument("--only_do_testing",      type=bool,  default=False,            help="If True, will skip training and only perform testing of the loaded model.",)
+    parser.add_argument("--load_exp_folder",      type=str,   default=None,             help="Path to experiment folder with a pretrained model to load. Note that the same path will be used to store the current experiment.",)
+    parser.add_argument("--new_exp_folder",       type=str,   default='./log/' + date,  help="Path to output folder to store experiment.",)
+    parser.add_argument("--dataset_name",         type=str,   default='shd',            help="Dataset name (shd, ssc, hd or sc).",)
+    parser.add_argument("--data_folder",          type=str,   default="./data/raw/",    help="Path to dataset folder.",)
+    parser.add_argument("--log_tofile",           type=bool,  default=True,             help="Whether to print experiment log in an dedicated file or directly inside the terminal.",)
+    parser.add_argument("--save_best",            type=bool,  default=True,             help="If True, the model from the epoch with the highest validation accuracy is saved, if False, no model is saved.",)
+    parser.add_argument("--batch_size",           type=int,   default=512,              help="Number of input examples inside a single batch.",)
+    parser.add_argument("--nb_epochs",            type=int,   default=50,               help="Number of training epochs (i.e. passes through the dataset).",)
+    parser.add_argument("--start_epoch",          type=int,   default=0,                help="Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.",)
+    parser.add_argument("--lr",                   type=float, default=1.5e-2,             help="Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",)
+    parser.add_argument("--scheduler_patience",   type=int,   default=1,                help="Number of epochs without progress before the learning rate gets decreased.",)
+    parser.add_argument("--scheduler_factor",     type=float, default=0.7,              help="Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.",)
+    parser.add_argument("--use_regularizers",     type=bool,  default=True,             help="Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.",)
+    parser.add_argument("--reg_factor",           type=float, default=0.5,              help="Factor that scales the loss value from the regularizers.",)
+    parser.add_argument("--reg_fmin",             type=float, default=0.01,             help="Lowest firing frequency value of spiking neurons for which there is no regularization loss.",)
+    parser.add_argument("--reg_fmax",             type=float, default=0.2,              help="Highest firing frequency value of spiking neurons for which there is no regularization loss.",)
+    parser.add_argument("--use_augm",             type=bool,  default=False,            help="Whether to use data augmentation or not. Only implemented for nonspiking HD and SC datasets.",)
+    parser.add_argument("--nb_steps",             type=int,   default=100,)
+    parser.add_argument("--trial",                type=int,   default=5,)
+    parser.add_argument("--seed",                 type=int,   default=-100,) # round(time.time())
+    parser.add_argument("--ckpt_freq",            type=int,   default=5,)
+    parser.add_argument("--threshold",            type=float, default=1.0,)
+    
+    parser.add_argument("--model_type",        type=str,    default="RadLIF",    help="Type of ANN or SNN model.",)
+    parser.add_argument("--nb_layers",         type=int,    default=2,           help="Number of layers (including readout layer).",)
+    parser.add_argument("--nb_hiddens",        type=int,    default=1024,        help="Number of neurons in all hidden layers.",)
+    parser.add_argument("--pdrop",             type=float,  default=0.1,         help="Dropout rate, must be between 0 and 1.",)
+    parser.add_argument("--normalization",     type=str,    default="batchnorm", help="Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.",)
+    parser.add_argument("--use_bias",          type=bool,   default=False,       help="Whether to include trainable bias with feedforward weights.",)
+    parser.add_argument("--bidirectional",     type=bool,   default=False,       help="If True, a bidirectional model that scans the sequence in both directions is used, which doubles the size of feedforward matrices. ",)
+    parser.add_argument("--train_input",       type=bool,   default=True,)
+    parser.add_argument("--dropout",           type=float,  default=0.0,)
+    parser.add_argument("--dropout_stop",      type=float,  default=0.95,)
+    parser.add_argument("--dropout_stepping",  type=float,  default=0.0,)
+    parser.add_argument("--clustering",        type=bool,   default=False,)
+    parser.add_argument("--clustering_factor", type=list,   default=[1, 2.5],)
+    parser.add_argument("--cin_minmax",        type=list,   default=[0.01, 0.05],)
+    parser.add_argument("--cout_minmax",       type=list,   default=[0.05, 0.2],)
+    parser.add_argument("--nb_cluster",        type=int,    default=8,)
+    parser.add_argument("--noise_test",        type=float,  default=0.0,)
+    
+    
     return parser
 
-
-def print_training_options(args):
+def print_options(args):
     logging.info(
         """
         Training Config
@@ -159,64 +90,15 @@ def print_training_options(args):
         Regularization min firing rate: {reg_fmin}
         Reguarization max firing rate: {reg_fmax}
         Use data augmentation: {use_augm}
-    """.format(
-            **vars(args)
-        )
-    )
-def add_model_options(parser):
-    parser.add_argument(
-        "--model_type",
-        type=str,
-        choices=["LIF", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU"],
-        default="LIF",
-        help="Type of ANN or SNN model.",
-    )
-    parser.add_argument(
-        "--nb_layers",
-        type=int,
-        default=3,
-        help="Number of layers (including readout layer).",
-    )
-    parser.add_argument(
-        "--nb_hiddens",
-        type=int,
-        default=128,
-        help="Number of neurons in all hidden layers.",
-    )
-    parser.add_argument(
-        "--pdrop",
-        type=float,
-        default=0.1,
-        help="Dropout rate, must be between 0 and 1.",
-    )
-    parser.add_argument(
-        "--normalization",
-        type=str,
-        default="batchnorm",
-        help="Type of normalization, Every string different from batchnorm "
-        "and layernorm will result in no normalization.",
-    )
-    parser.add_argument(
-        "--use_bias",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
-        help="Whether to include trainable bias with feedforward weights.",
-    )
-    parser.add_argument(
-        "--bidirectional",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
-        help="If True, a bidirectional model that scans the sequence in both "
-        "directions is used, which doubles the size of feedforward matrices. ",
-    )
-    return parser
-
-
-def print_model_options(args):
-    logging.info(
-        """
+        Number of steps: {nb_steps}
+        Trials: {trial}
+        Seed: {seed}
+        Checkpoint frequency: {ckpt_freq}
+        Threshold: {threshold}
+        
+        ---------------
         Model Config
-        ------------
+        
         Model Type: {model_type}
         Number of layers: {nb_layers}
         Number of hidden neurons: {nb_hiddens}
@@ -224,23 +106,23 @@ def print_model_options(args):
         Normalization: {normalization}
         Use bias: {use_bias}
         Bidirectional: {bidirectional}
-    """.format(
-            **vars(args)
-        )
+        Train input layer: {train_input}
+        Dropout: {dropout}
+        Dropout_stop: {dropout_stop}
+        Dropout_stepping: {dropout_stepping}
+        Clustering: {clustering}
+        Clustering factor: {clustering_factor}
+        Cin min and max: {cin_minmax}
+        Cout min and max: {cout_minmax}
+        Number of clusters: {nb_cluster}
+        Noise in testset: {noise_test}
+    """.format(**vars(args))
     )
-    
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 
+##########################################################
+########### define surrogate gradient function ###########
 class SpikeFunctionBoxcar(torch.autograd.Function):
-    """
-    Compute surrogate gradient of the spike step function using
-    box-car function similar to DECOLLE, Kaiser et al. (2020).
-    """
-
     @staticmethod
     def forward(ctx, x):
         ctx.save_for_backward(x)
@@ -253,45 +135,15 @@ class SpikeFunctionBoxcar(torch.autograd.Function):
         grad_x[x > 0.5] = 0
         return grad_x
 
-
+#######################################
+########### define RC model ###########
 class SNN(nn.Module):
     """
     A multi-layered Spiking Neural Network (SNN).
-
-    It accepts input tensors formatted as (batch, time, feat). In the case of
-    4d inputs like (batch, time, feat, channel) the input is flattened as
-    (batch, time, feat*channel).
-
+    It accepts input tensors formatted as (batch, time, feat). 
     The function returns the outputs of the last spiking or readout layer
     with shape (batch, time, feats) or (batch, feats) respectively, as well
     as the firing rates of all hidden neurons with shape (num_layers*feats).
-
-    Arguments
-    ---------
-    input_shape : tuple
-        Shape of an input example.
-    layer_sizes : int list
-        List of number of neurons in all hidden layers
-    neuron_type : str
-        Type of neuron model, either 'LIF', 'adLIF', 'RLIF' or 'RadLIF'.
-    threshold : float
-        Fixed threshold value for the membrane potential.
-    dropout : float
-        Dropout rate (must be between 0 and 1).
-    normalization : str
-        Type of normalization (batchnorm, layernorm). Every string different
-        from batchnorm and layernorm will result in no normalization.
-    use_bias : bool
-        If True, additional trainable bias is used with feedforward weights.
-    bidirectional : bool
-        If True, a bidirectional model that scans the sequence both directions
-        is used, which doubles the size of feedforward matrices in layers l>0.
-    use_readout_layer : bool
-        If True, the final layer is a non-spiking, non-recurrent LIF and outputs
-        a cumulative sum of the membrane potential over time. The outputs have
-        shape (batch, labels) with no time dimension. If False, the final layer
-        is the same as the hidden layers and outputs spike trains with shape
-        (batch, time, labels).
     """
 
     def __init__(
@@ -323,25 +175,16 @@ class SNN(nn.Module):
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
         self.is_snn = True
-
-        if neuron_type not in ["LIF", "adLIF", "RLIF", "RadLIF"]:
-            raise ValueError(f"Invalid neuron type {neuron_type}")
-
-        # Init trainable parameters
         self.snn = self._init_layers()
 
     def _init_layers(self):
-
         snn = nn.ModuleList([])
         input_size = self.input_size
         snn_class = self.neuron_type + "Layer"
 
-        if self.use_readout_layer:
-            num_hidden_layers = self.num_layers - 1
-        else:
-            num_hidden_layers = self.num_layers
+        if self.use_readout_layer: num_hidden_layers = self.num_layers - 1
+        else:                      num_hidden_layers = self.num_layers
 
-        # Hidden layers
         for i in range(num_hidden_layers):
             snn.append(
                 globals()[snn_class](
@@ -357,7 +200,6 @@ class SNN(nn.Module):
             )
             input_size = self.layer_sizes[i] * (1 + self.bidirectional)
 
-        # Readout layer
         if self.use_readout_layer:
             snn.append(
                 ReadoutLayer(
@@ -372,8 +214,7 @@ class SNN(nn.Module):
 
         return snn
 
-    def forward(self, x):
-
+    def forward(self, x, mask):
         # Reshape input tensors to (batch, time, feats) for 4d inputs
         if self.reshape:
             if x.ndim == 4:
@@ -381,45 +222,17 @@ class SNN(nn.Module):
             else:
                 raise NotImplementedError
 
-        # Process all layers
         all_spikes = []
         for i, snn_lay in enumerate(self.snn):
-            x = snn_lay(x)
+            x = snn_lay(x, mask[i])
             if not (self.use_readout_layer and i == self.num_layers - 1):
                 all_spikes.append(x)
 
-        # Compute mean firing rate of each spiking neuron
-        firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1))
-
-        return x, firing_rates
+        firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1)) # Compute mean firing rate of each spiking neuron
+        return x, firing_rates, all_spikes
 
 class RadLIFLayer(nn.Module):
-    """
-    A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise
-    recurrent connections (RadLIF).
-
-    Arguments
-    ---------
-    input_size : int
-        Number of features in the input tensors.
-    hidden_size : int
-        Number of output neurons.
-    batch_size : int
-        Batch size of the input tensors.
-    threshold : float
-        Value of spiking threshold (fixed)
-    dropout : float
-        Dropout factor (must be between 0 and 1).
-    normalization : str
-        Type of normalization. Every string different from 'batchnorm'
-        and 'layernorm' will result in no normalization.
-    use_bias : bool
-        If True, additional trainable bias is used with feedforward weights.
-    bidirectional : bool
-        If True, a bidirectional model that scans the sequence both directions
-        is used, which doubles the size of feedforward matrices in layers l>0.
-    """
-
+    """A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RadLIF)."""
     def __init__(
         self,
         input_size,
@@ -432,8 +245,6 @@ class RadLIFLayer(nn.Module):
         bidirectional=False,
     ):
         super().__init__()
-
-        # Fixed parameters
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
         self.batch_size = batch_size
@@ -471,46 +282,35 @@ class RadLIFLayer(nn.Module):
         elif normalization == "layernorm":
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
-
-        # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
+        
+        # if not config.train_input_layer:
+        #     for name, p in self.named_parameters():
+        #         if 'W' in name: p.requires_grad = False
 
-    def forward(self, x):
-
+    def forward(self, x, mask):
+        # x.shape = [batch, nb_steps, input]
+        # Wx.shape = [batch, nb_steps, hid]
         # Concatenate flipped sequence on batch dim
         if self.bidirectional:
             x_flip = x.flip(1)
             x = torch.cat([x, x_flip], dim=0)
-
-        # Change batch size if needed
         if self.batch_size != x.shape[0]:
             self.batch_size = x.shape[0]
-
-        # Feed-forward affine transformations (all steps in parallel)
         Wx = self.W(x)
-
-        # Apply normalization
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
-
-        # Compute spikes via neuron dynamics
-        s = self._radlif_cell(Wx)
-
+        s = self.mem_update(Wx) # s.shape=[batch, nb_steps, hid]
         # Concatenate forward and backward sequences on feat dim
         if self.bidirectional:
             s_f, s_b = s.chunk(2, dim=0)
             s_b = s_b.flip(1)
             s = torch.cat([s_f, s_b], dim=2)
-
-        # Apply dropout
         s = self.drop(s)
-
         return s
 
-    def _radlif_cell(self, Wx):
-
-        # Initializations
+    def mem_update(self, Wx):
         device = Wx.device
         ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
@@ -522,50 +322,20 @@ class RadLIFLayer(nn.Module):
         beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
         a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
         b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
-
-        # Set diagonal elements of recurrent matrix to zero
+        
         V = self.V.weight.clone().fill_diagonal_(0)
-
-        # Loop over time axis
         for t in range(Wx.shape[1]):
-
-            # Compute potential (RadLIF)
             wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha) * (
-                Wx[:, t, :] + torch.matmul(st, V) - wt
-            )
-
-            # Compute spikes with surrogate gradient
+            ut = alpha * (ut - st) + (1 - alpha) * (Wx[:, t, :] + torch.matmul(st, V) - wt)
             st = self.spike_fct(ut - self.threshold)
             s.append(st)
-
         return torch.stack(s, dim=1)
-
 
 class ReadoutLayer(nn.Module):
     """
     This function implements a single layer of non-spiking Leaky Integrate and
     Fire (LIF) neurons, where the output consists of a cumulative sum of the
     membrane potential using a softmax function, instead of spikes.
-
-    Arguments
-    ---------
-    input_size : int
-        Feature dimensionality of the input tensors.
-    hidden_size : int
-        Number of output neurons.
-    batch_size : int
-        Batch size of the input tensors.
-    dropout : float
-        Dropout factor (must be between 0 and 1).
-    normalization : str
-        Type of normalization. Every string different from 'batchnorm'
-        and 'layernorm' will result in no normalization.
-    use_bias : bool
-        If True, additional trainable bias is used with feedforward weights.
-    bidirectional : bool
-        If True, a bidirectional model that scans the sequence both directions
-        is used, which doubles the size of feedforward matrices in layers l>0.
     """
 
     def __init__(
@@ -578,8 +348,6 @@ class ReadoutLayer(nn.Module):
         use_bias=False,
     ):
         super().__init__()
-
-        # Fixed parameters
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
         self.batch_size = batch_size
@@ -588,12 +356,10 @@ class ReadoutLayer(nn.Module):
         self.use_bias = use_bias
         self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
 
-        # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
         nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
 
-        # Initialize normalization
         self.normalize = False
         if normalization == "batchnorm":
             self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
@@ -602,64 +368,30 @@ class ReadoutLayer(nn.Module):
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
 
-        # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-    def forward(self, x):
-
-        # Feed-forward affine transformations (all steps in parallel)
-        Wx = self.W(x)
-
-        # Apply normalization
+    def forward(self, x, mask):
+        Wx = self.W(x) # Feed-forward affine transformations (all steps in parallel)
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
-
-        # Compute membrane potential via non-spiking neuron dynamics
-        out = self._readout_cell(Wx)
-
+        out = self.mem_update(Wx) # Wx.shape=[batch, nb_steps, output], out.shape=[batch, output]
         return out
 
-    def _readout_cell(self, Wx):
-
-        # Initializations
+    def mem_update(self, Wx):
         device = Wx.device
         ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
-
-        # Bound values of the neuron parameters to plausible ranges
-        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
-
-        # Loop over time axis
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1]) # Bound values of the neuron parameters to plausible ranges
         for t in range(Wx.shape[1]):
-
-            # Compute potential (LIF)
             ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
             out = out + F.softmax(ut, dim=1)
-
         return out
-
-import h5py
-import numpy as np
-import torch
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
 
 class SpikingDataset(Dataset):
     """
     Dataset class for the Spiking Heidelberg Digits (SHD) or
     Spiking Speech Commands (SSC) dataset.
-
-    Arguments
-    ---------
-    dataset_name : str
-        Name of the dataset, either shd or ssc.
-    data_folder : str
-        Path to folder containing the dataset (h5py file).
-    split : str
-        Split of the SHD dataset, must be either "train" or "test".
-    nb_steps : int
-        Number of time steps for the generated spike trains.
     """
 
     def __init__(
@@ -682,7 +414,7 @@ class SpikingDataset(Dataset):
         self.h5py_file = h5py.File(filename, "r")
         self.firing_times = self.h5py_file["spikes"]["times"]
         self.units_fired = self.h5py_file["spikes"]["units"]
-        self.labels = np.array(self.h5py_file["labels"], dtype=np.int)
+        self.labels = np.array(self.h5py_file["labels"], dtype=int)
 
     def __len__(self):
         return len(self.labels)
@@ -723,22 +455,6 @@ def load_shd_or_ssc(
     """
     This function creates a dataloader for a given split of
     the SHD or SSC datasets.
-
-    Arguments
-    ---------
-    dataset_name : str
-        Name of the dataset, either shd or ssc.
-    data_folder : str
-        Path to folder containing the Heidelberg Digits dataset.
-    split : str
-        Split of dataset, must be either "train" or "test" for SHD.
-        For SSC, can be "train", "valid" or "test".
-    batch_size : int
-        Number of examples in a single generated batch.
-    shuffle : bool
-        Whether to shuffle examples or not.
-    workers : int
-        Number of workers.
     """
     if dataset_name not in ["shd", "ssc"]:
         raise ValueError(f"Invalid dataset name {dataset_name}")
@@ -762,27 +478,6 @@ def load_shd_or_ssc(
         pin_memory=True,
     )
     return loader
-import errno
-import logging
-import os
-import time
-from datetime import timedelta
-
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
-from sparch.dataloaders.nonspiking_datasets import load_hd_or_sc
-from sparch.dataloaders.spiking_datasets import load_shd_or_ssc
-from sparch.models.anns import ANN
-from sparch.models.snns import SNN
-from sparch.parsers.model_config import print_model_options
-from sparch.parsers.training_config import print_training_options
-
-logger = logging.getLogger(__name__)
-
 
 class Experiment:
     """
@@ -821,42 +516,39 @@ class Experiment:
         self.reg_fmin = args.reg_fmin
         self.reg_fmax = args.reg_fmax
         self.use_augm = args.use_augm
+        self.nb_steps = args.nb_steps
 
         # Initialize logging and output folders
         self.init_exp_folders()
         self.init_logging()
-        print_model_options(args)
-        print_training_options(args)
+        print_options(args)
 
-        # Set device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
-
-        # Initialize dataloaders and model
         self.init_dataset()
         self.init_model()
 
-        # Define optimizer
-        self.opt = torch.optim.Adam(self.net.parameters(), self.lr)
-
-        # Define learning rate scheduler
+        self.optimizer = torch.optim.Adam(self.net.parameters(), self.lr)
         self.scheduler = ReduceLROnPlateau(
-            optimizer=self.opt,
+            optimizer=self.optimizer,
             mode="max",
             factor=self.scheduler_factor,
             patience=self.scheduler_patience,
             min_lr=1e-6,
         )
-        # Define loss function
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self):
-        """
-        This function performs model training with the configuration
-        specified by the class initialization.
-        """
-        if not self.only_do_testing:
+    def set_seed(self, seed):
+        if seed > 0:
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
+    def forward(self):
+        if not self.only_do_testing:
+            train_accs, valid_accs = [], []
             # Initialize best accuracy
             if self.use_pretrained_model:
                 logging.info("\n------ Using pretrained model ------\n")
@@ -868,20 +560,16 @@ class Experiment:
             logging.info("\n------ Begin training ------\n")
 
             for e in range(best_epoch + 1, best_epoch + self.nb_epochs + 1):
-                self.train_one_epoch(e)
-                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
+                train_acc = self.train_one_epoch(e); train_accs.append(train_acc)
+                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc); valid_accs.append(best_acc)
 
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
 
             # Loading best model
             if self.save_best:
-                self.net = torch.load(
-                    f"{self.checkpoint_dir}/best_model.pth", map_location=self.device
-                )
-                logging.info(
-                    f"Loading best model, epoch={best_epoch}, valid acc={best_acc}"
-                )
+                self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=self.device)
+                logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
             else:
                 logging.info(
                     "Cannot load best model because save_best option is "
@@ -889,30 +577,24 @@ class Experiment:
                 )
 
         # Test trained model
-        if self.dataset_name in ["sc", "ssc"]:
+        if self.dataset_name == "ssc":
             self.test_one_epoch(self.test_loader)
         else:
             self.test_one_epoch(self.valid_loader)
-            logging.info(
-                "\nThis dataset uses the same split for validation and testing.\n"
-            )
+            logging.info("\nThis dataset uses the same split for validation and testing.\n")
+        return np.array(train_accs), np.array(valid_accs)
 
     def init_exp_folders(self):
-        """
-        This function defines the output folders for the experiment.
-        """
+        """Define the output folders for the experiment."""
         # Check if path exists for loading pretrained model
         if self.use_pretrained_model:
             exp_folder = self.load_exp_folder
             self.load_path = exp_folder + "/checkpoints/best_model.pth"
             if not os.path.exists(self.load_path):
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), self.load_path
-                )
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), self.load_path)
 
         # Use given path for new model folder
-        elif self.new_exp_folder is not None:
-            exp_folder = self.new_exp_folder
+        elif self.new_exp_folder is not None: exp_folder = self.new_exp_folder
 
         # Generate a path for new model from chosen config
         else:
@@ -940,33 +622,14 @@ class Experiment:
         self.exp_folder = exp_folder
 
     def init_logging(self):
-        """
-        This function sets the experimental log to be written either to
-        a dedicated log file, or to the terminal.
-        """
         if self.log_tofile:
-            logging.FileHandler(
-                filename=self.log_dir + "exp.log",
-                mode="a",
-                encoding=None,
-                delay=False,
-            )
-            logging.basicConfig(
-                filename=self.log_dir + "exp.log",
-                level=logging.INFO,
-                format="%(message)s",
-            )
+            logging.FileHandler(filename=self.log_dir + "exp.log", mode="a", encoding=None, delay=False,)
+            logging.basicConfig(filename=self.log_dir + "exp.log", level=logging.INFO, format="%(message)s",)
         else:
-            logging.basicConfig(
-                level=logging.INFO,
-                format="%(message)s",
-            )
+            logging.basicConfig(level=logging.INFO, format="%(message)s",)
 
     def init_dataset(self):
-        """
-        This function prepares dataloaders for the desired dataset.
-        """
-        # For the spiking datasets
+        """This function prepares dataloaders for the desired dataset."""
         if self.dataset_name in ["shd", "ssc"]:
 
             self.nb_inputs = 700
@@ -977,7 +640,7 @@ class Experiment:
                 data_folder=self.data_folder,
                 split="train",
                 batch_size=self.batch_size,
-                nb_steps=100,
+                nb_steps=self.nb_steps,
                 shuffle=True,
             )
             self.valid_loader = load_shd_or_ssc(
@@ -985,7 +648,7 @@ class Experiment:
                 data_folder=self.data_folder,
                 split="valid",
                 batch_size=self.batch_size,
-                nb_steps=100,
+                nb_steps=self.nb_steps,
                 shuffle=False,
             )
             if self.dataset_name == "ssc":
@@ -994,50 +657,11 @@ class Experiment:
                     data_folder=self.data_folder,
                     split="test",
                     batch_size=self.batch_size,
-                    nb_steps=100,
+                    nb_steps=self.nb_steps,
                     shuffle=False,
                 )
             if self.use_augm:
-                logging.warning(
-                    "\nWarning: Data augmentation not implemented for SHD and SSC.\n"
-                )
-
-        # For the non-spiking datasets
-        elif self.dataset_name in ["hd", "sc"]:
-
-            self.nb_inputs = 40
-            self.nb_outputs = 20 if self.dataset_name == "hd" else 35
-
-            self.train_loader = load_hd_or_sc(
-                dataset_name=self.dataset_name,
-                data_folder=self.data_folder,
-                split="train",
-                batch_size=self.batch_size,
-                use_augm=self.use_augm,
-                shuffle=True,
-            )
-            self.valid_loader = load_hd_or_sc(
-                dataset_name=self.dataset_name,
-                data_folder=self.data_folder,
-                split="valid",
-                batch_size=self.batch_size,
-                use_augm=self.use_augm,
-                shuffle=False,
-            )
-            if self.dataset_name == "sc":
-                self.test_loader = load_hd_or_sc(
-                    dataset_name=self.dataset_name,
-                    data_folder=self.data_folder,
-                    split="test",
-                    batch_size=self.batch_size,
-                    use_augm=self.use_augm,
-                    shuffle=False,
-                )
-            if self.use_augm:
-                logging.info("\nData augmentation is used\n")
-
-        else:
-            raise ValueError(f"Invalid dataset name {self.dataset_name}")
+                logging.warning("\nWarning: Data augmentation not implemented for SHD and SSC.\n")
 
     def init_model(self):
         """
@@ -1052,7 +676,6 @@ class Experiment:
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
 
         elif self.model_type in ["LIF", "adLIF", "RLIF", "RadLIF"]:
-
             self.net = SNN(
                 input_shape=input_shape,
                 layer_sizes=layer_sizes,
@@ -1066,179 +689,86 @@ class Experiment:
 
             logging.info(f"\nCreated new spiking model:\n {self.net}\n")
 
-        elif self.model_type in ["MLP", "RNN", "LiGRU", "GRU"]:
-
-            self.net = ANN(
-                input_shape=input_shape,
-                layer_sizes=layer_sizes,
-                ann_type=self.model_type,
-                dropout=self.pdrop,
-                normalization=self.normalization,
-                use_bias=self.use_bias,
-                bidirectional=self.bidirectional,
-                use_readout_layer=True,
-            ).to(self.device)
-
-            logging.info(f"\nCreated new non-spiking model:\n {self.net}\n")
-
-        else:
-            raise ValueError(f"Invalid model type {self.model_type}")
-
-        self.nb_params = sum(
-            p.numel() for p in self.net.parameters() if p.requires_grad
-        )
+        self.nb_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         logging.info(f"Total number of trainable parameters is {self.nb_params}")
 
     def train_one_epoch(self, e):
-        """
-        This function trains the model with a single pass over the
-        training split of the dataset.
-        """
         start = time.time()
         self.net.train()
-        losses, accs = [], []
-        epoch_spike_rate = 0
+        losses, accs, epoch_spike_rate = [], [], 0
 
-        # Loop over batches from train set
         for step, (x, _, y) in enumerate(self.train_loader):
-
-            # Dataloader uses cpu to allow pin memory
-            x = x.to(self.device)
-            y = y.to(self.device)
-
-            # Forward pass through network
-            output, firing_rates = self.net(x)
-
-            # Compute loss
+            x = x.to(self.device); y = y.to(self.device)
+            output, firing_rates, all_spikes = self.net(x, [0,0,0])
             loss_val = self.loss_fn(output, y)
-            losses.append(loss_val.item())
 
             # Spike activity
-            if self.net.is_snn:
-                epoch_spike_rate += torch.mean(firing_rates)
+            epoch_spike_rate += torch.mean(firing_rates)
+            if self.use_regularizers:
+                reg_quiet = F.relu(self.reg_fmin - firing_rates).sum()
+                reg_burst = F.relu(firing_rates - self.reg_fmax).sum()
+                loss_val += self.reg_factor * (reg_quiet + reg_burst)
 
-                if self.use_regularizers:
-                    reg_quiet = F.relu(self.reg_fmin - firing_rates).sum()
-                    reg_burst = F.relu(firing_rates - self.reg_fmax).sum()
-                    loss_val += self.reg_factor * (reg_quiet + reg_burst)
-
-            # Backpropagate
-            self.opt.zero_grad()
+            losses.append(loss_val.item())
+            self.optimizer.zero_grad()
             loss_val.backward()
-            self.opt.step()
+            self.optimizer.step()
 
-            # Compute accuracy with labels
             pred = torch.argmax(output, dim=1)
             acc = np.mean((y == pred).detach().cpu().numpy())
             accs.append(acc)
 
         # Learning rate of whole epoch
-        current_lr = self.opt.param_groups[-1]["lr"]
-        logging.info(f"Epoch {e}: lr={current_lr}")
-
-        # Train loss of whole epoch
+        current_lr = self.optimizer.param_groups[-1]["lr"]
         train_loss = np.mean(losses)
-        logging.info(f"Epoch {e}: train loss={train_loss}")
-
-        # Train accuracy of whole epoch
         train_acc = np.mean(accs)
-        logging.info(f"Epoch {e}: train acc={train_acc}")
-
-        # Train spike activity of whole epoch
-        if self.net.is_snn:
-            epoch_spike_rate /= step
-            logging.info(f"Epoch {e}: train mean act rate={epoch_spike_rate}")
-
-        end = time.time()
-        elapsed = str(timedelta(seconds=end - start))
-        logging.info(f"Epoch {e}: train elapsed time={elapsed}")
+        epoch_spike_rate /= step
+        elapsed = str(timedelta(seconds=time.time() - start))[5:]
+        logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}")
+        return train_acc
 
     def valid_one_epoch(self, e, best_epoch, best_acc):
-        """
-        This function tests the model with a single pass over the
-        validation split of the dataset.
-        """
+        start = time.time()
         with torch.no_grad():
-
             self.net.eval()
-            losses, accs = [], []
-            epoch_spike_rate = 0
-
-            # Loop over batches from validation set
+            losses, accs, epoch_spike_rate = [], [], 0
             for step, (x, _, y) in enumerate(self.valid_loader):
-
-                # Dataloader uses cpu to allow pin memory
-                x = x.to(self.device)
-                y = y.to(self.device)
-
-                # Forward pass through network
-                output, firing_rates = self.net(x)
-
-                # Compute loss
+                x = x.to(self.device); y = y.to(self.device)
+                output, firing_rates, all_spikes = self.net(x, [0,0,0])
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
 
-                # Compute accuracy with labels
                 pred = torch.argmax(output, dim=1)
-                acc = np.mean((y == pred).detach().cpu().numpy())
-                accs.append(acc)
+                accs.append(np.mean((y == pred).detach().cpu().numpy()))
+                epoch_spike_rate += torch.mean(firing_rates)
 
-                # Spike activity
-                if self.net.is_snn:
-                    epoch_spike_rate += torch.mean(firing_rates)
-
-            # Validation loss of whole epoch
             valid_loss = np.mean(losses)
-            logging.info(f"Epoch {e}: valid loss={valid_loss}")
-
-            # Validation accuracy of whole epoch
             valid_acc = np.mean(accs)
-            logging.info(f"Epoch {e}: valid acc={valid_acc}")
+            epoch_spike_rate /= step
+            elapsed = str(timedelta(seconds=time.time() - start))[5:]
+            sparsity = 0
+            logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, mask={sparsity:.4f}, time={elapsed}")
 
-            # Validation spike activity of whole epoch
-            if self.net.is_snn:
-                epoch_spike_rate /= step
-                logging.info(f"Epoch {e}: valid mean act rate={epoch_spike_rate}")
-
-            # Update learning rate
             self.scheduler.step(valid_acc)
 
             # Update best epoch and accuracy
             if valid_acc > best_acc:
-                best_acc = valid_acc
-                best_epoch = e
-
-                # Save best model
-                if self.save_best:
-                    torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
-                    logging.info(f"\nBest model saved with valid acc={valid_acc}")
+                best_acc = valid_acc; best_epoch = e
+                torch.save(self.net, f"{self.checkpoint_dir}/best_model.pth")
+                logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
-
             return best_epoch, best_acc
 
     def test_one_epoch(self, test_loader):
-        """
-        This function tests the model with a single pass over the
-        testing split of the dataset.
-        """
         with torch.no_grad():
-
             self.net.eval()
-            losses, accs = [], []
-            epoch_spike_rate = 0
+            losses, accs, epoch_spike_rate = [], [], 0
 
             logging.info("\n------ Begin Testing ------\n")
-
-            # Loop over batches from test set
             for step, (x, _, y) in enumerate(test_loader):
-
-                # Dataloader uses cpu to allow pin memory
-                x = x.to(self.device)
-                y = y.to(self.device)
-
-                # Forward pass through network
-                output, firing_rates = self.net(x)
+                x = x.to(self.device); y = y.to(self.device)
+                output, firing_rates, all_spikes = self.net(x, [0,0,0])
 
                 # Compute loss
                 loss_val = self.loss_fn(output, y)
@@ -1248,32 +778,43 @@ class Experiment:
                 pred = torch.argmax(output, dim=1)
                 acc = np.mean((y == pred).detach().cpu().numpy())
                 accs.append(acc)
+                epoch_spike_rate += torch.mean(firing_rates)
 
-                # Spike activity
-                if self.net.is_snn:
-                    epoch_spike_rate += torch.mean(firing_rates)
-
-            # Test loss
             test_loss = np.mean(losses)
-            logging.info(f"Test loss={test_loss}")
-
-            # Test accuracy
             test_acc = np.mean(accs)
-            logging.info(f"Test acc={test_acc}")
-
-            # Test spike activity
-            if self.net.is_snn:
-                epoch_spike_rate /= step
-                logging.info(f"Test mean act rate={epoch_spike_rate}")
-
+            epoch_spike_rate /= step
+            logging.info(f"Test loss={test_loss}, acc={test_acc}, mean act rate={epoch_spike_rate}")
             logging.info("\n-----------------------------\n")
 
-import argparse
+def plot_errorbar(train_acc_log, test_acc_log, file_name):
+    train_mean = np.mean(train_acc_log, axis=1)
+    train_std = np.std(train_acc_log, axis=1)
+    # train_var = np.var(train_acc_log, axis=1)
+    # train_max = np.max(train_acc_log, axis=1)
+    # train_min = np.min(train_acc_log, axis=1)
+
+    test_mean = np.mean(test_acc_log, axis=1)
+    test_std = np.std(test_acc_log, axis=1)
+    # test_var = np.var(test_acc_log, axis=1)
+    # test_max = np.max(test_acc_log, axis=1)
+    # test_min = np.min(test_acc_log, axis=1)
+
+    plt.plot(list(range(config.nb_epochs)), train_mean, color='deeppink', label='train')
+    plt.fill_between(list(range(config.nb_epochs)), train_mean-train_std, train_mean+train_std, color='deeppink', alpha=0.2)
+    # plt.fill_between(list(range(config.epoch)), train_min, train_max, color='violet', alpha=0.2)
+
+    plt.plot(list(range(config.nb_epochs)), test_mean, color='blue', label='test')
+    plt.fill_between(list(range(config.nb_epochs)), test_mean-test_std, test_mean+test_std, color='blue', alpha=0.2)
+    # plt.fill_between(list(range(config.epoch)), test_min, test_max, color='blue', alpha=0.2)
+
+    plt.legend()
+    plt.grid()
+    # plt.axis([-5, 105, 75, 95])
+    plt.savefig(file_name)
+    # plt.show()
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Model training on spiking speech commands datasets."
-    )
-    parser = add_model_options(parser)
+    parser = argparse.ArgumentParser(description="Model training on spiking speech commands datasets.")
     parser = add_training_options(parser)
     args = parser.parse_args()
     experiment = Experiment(args)

@@ -1,0 +1,364 @@
+
+        Training Config
+        ---------------
+        Use pretrained model: False
+        Only do testing: False
+        Load experiment folder: None
+        New experiment folder: ./log/08-04-20-07
+        Dataset name: shd
+        Data folder: ./data/raw/
+        Log to file: True
+        Save best model: True
+        Batch size: 512
+        Number of epochs: 50
+        Start epoch: 0
+        Initial learning rate: 0.015
+        Scheduler patience: 1
+        Scheduler factor: 0.7
+        Use regularizers: True
+        Regularization factor: 0.5
+        Regularization min firing rate: 0.01
+        Reguarization max firing rate: 0.2
+        Use data augmentation: False
+        Number of steps: 100
+        Trials: 5
+        Seed: -100
+        Checkpoint frequency: 5
+        Threshold: 1.0
+        
+        ---------------
+        Model Config
+        
+        Model Type: RadLIF
+        Number of layers: 2
+        Number of hidden neurons: 1024
+        Dropout rate: 0.1
+        Normalization: batchnorm
+        Use bias: False
+        Bidirectional: False
+        Train input layer: True
+        Dropout: 0.0
+        Dropout_stop: 0.95
+        Dropout_stepping: 0.0
+        Clustering: False
+        Clustering factor: [1, 2.5]
+        Cin min and max: [0.01, 0.05]
+        Cout min and max: [0.05, 0.2]
+        Number of clusters: 8
+        Noise in testset: 0.0
+    
+
+Device is set to cuda
+
+Number of examples in train set: 8156
+SHD does not have a validation split. Using test split.
+Number of examples in test set: 2264
+
+Created new spiking model:
+ SNN(
+  (snn): ModuleList(
+    (0): RadLIFLayer(
+      (W): Linear(in_features=700, out_features=1024, bias=False)
+      (V): Linear(in_features=1024, out_features=1024, bias=False)
+      (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+    (1): ReadoutLayer(
+      (W): Linear(in_features=1024, out_features=20, bias=False)
+      (norm): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+      (drop): Dropout(p=0.1, inplace=False)
+    )
+  )
+)
+
+Total number of trainable parameters is 1792060
+
+------ Begin training ------
+
+Epoch 1: train loss=5.8630, acc=0.2845, fr=0.0311, lr=0.0150, time=19.006905
+Epoch 1: valid loss=8.7270, acc=0.0644, fr=0.0519, mask=0.0000, time=02.899733
+
+Best model saved with valid acc=0.06442418981481482
+
+-----------------------------
+
+Epoch 2: train loss=2.8517, acc=0.6186, fr=0.0324, lr=0.0150, time=14.990403
+Epoch 2: valid loss=1.9858, acc=0.5063, fr=0.0492, mask=0.0000, time=03.214647
+
+Best model saved with valid acc=0.5062644675925926
+
+-----------------------------
+
+Epoch 3: train loss=2.0992, acc=0.8192, fr=0.0355, lr=0.0150, time=14.843596
+Epoch 3: valid loss=0.7263, acc=0.7797, fr=0.0449, mask=0.0000, time=02.883376
+
+Best model saved with valid acc=0.7797453703703704
+
+-----------------------------
+
+Epoch 4: train loss=1.7803, acc=0.9114, fr=0.0381, lr=0.0150, time=15.698334
+Epoch 4: valid loss=0.4005, acc=0.8720, fr=0.0477, mask=0.0000, time=02.849317
+
+Best model saved with valid acc=0.8719762731481481
+
+-----------------------------
+
+Epoch 5: train loss=1.6505, acc=0.9460, fr=0.0406, lr=0.0150, time=16.944124
+Epoch 5: valid loss=0.3818, acc=0.8959, fr=0.0483, mask=0.0000, time=03.107954
+
+Best model saved with valid acc=0.8959490740740741
+
+-----------------------------
+
+Epoch 6: train loss=1.6022, acc=0.9611, fr=0.0412, lr=0.0150, time=16.480653
+Epoch 6: valid loss=0.3534, acc=0.8862, fr=0.0465, mask=0.0000, time=04.113581
+
+-----------------------------
+
+Epoch 7: train loss=1.5481, acc=0.9802, fr=0.0406, lr=0.0150, time=19.181921
+Epoch 7: valid loss=0.4063, acc=0.8735, fr=0.0481, mask=0.0000, time=03.467028
+
+-----------------------------
+
+Epoch 8: train loss=1.5223, acc=0.9861, fr=0.0419, lr=0.0105, time=17.685130
+Epoch 8: valid loss=0.4280, acc=0.8759, fr=0.0472, mask=0.0000, time=02.904513
+
+-----------------------------
+
+Epoch 9: train loss=1.5151, acc=0.9892, fr=0.0419, lr=0.0105, time=15.639242
+Epoch 9: valid loss=0.4710, acc=0.8630, fr=0.0475, mask=0.0000, time=03.571356
+
+-----------------------------
+
+Epoch 10: train loss=1.4980, acc=0.9937, fr=0.0417, lr=0.0073, time=15.308554
+Epoch 10: valid loss=0.3255, acc=0.8970, fr=0.0473, mask=0.0000, time=02.955817
+
+Best model saved with valid acc=0.8970196759259259
+
+-----------------------------
+
+Epoch 11: train loss=1.4905, acc=0.9963, fr=0.0413, lr=0.0073, time=15.035235
+Epoch 11: valid loss=0.2952, acc=0.9074, fr=0.0483, mask=0.0000, time=02.872106
+
+Best model saved with valid acc=0.9073784722222221
+
+-----------------------------
+
+Epoch 12: train loss=1.4835, acc=0.9980, fr=0.0422, lr=0.0073, time=15.206500
+Epoch 12: valid loss=0.3137, acc=0.9037, fr=0.0491, mask=0.0000, time=02.894700
+
+-----------------------------
+
+Epoch 13: train loss=1.4820, acc=0.9975, fr=0.0432, lr=0.0073, time=14.916869
+Epoch 13: valid loss=0.3043, acc=0.9115, fr=0.0514, mask=0.0000, time=02.843891
+
+Best model saved with valid acc=0.911472800925926
+
+-----------------------------
+
+Epoch 14: train loss=1.4761, acc=0.9982, fr=0.0441, lr=0.0073, time=15.021015
+Epoch 14: valid loss=0.3163, acc=0.8992, fr=0.0506, mask=0.0000, time=02.848257
+
+-----------------------------
+
+Epoch 15: train loss=1.4699, acc=0.9984, fr=0.0437, lr=0.0073, time=15.013077
+Epoch 15: valid loss=0.3301, acc=0.9054, fr=0.0506, mask=0.0000, time=02.823054
+
+-----------------------------
+
+Epoch 16: train loss=1.4660, acc=0.9991, fr=0.0438, lr=0.0051, time=15.004328
+Epoch 16: valid loss=0.2824, acc=0.9162, fr=0.0519, mask=0.0000, time=02.835295
+
+Best model saved with valid acc=0.9162037037037036
+
+-----------------------------
+
+Epoch 17: train loss=1.4635, acc=0.9994, fr=0.0447, lr=0.0051, time=15.109823
+Epoch 17: valid loss=0.3030, acc=0.9055, fr=0.0522, mask=0.0000, time=02.839736
+
+-----------------------------
+
+Epoch 18: train loss=1.4593, acc=0.9995, fr=0.0449, lr=0.0051, time=15.160802
+Epoch 18: valid loss=0.3099, acc=0.9046, fr=0.0528, mask=0.0000, time=02.857853
+
+-----------------------------
+
+Epoch 19: train loss=1.4587, acc=0.9996, fr=0.0453, lr=0.0036, time=14.920377
+Epoch 19: valid loss=0.2957, acc=0.9088, fr=0.0521, mask=0.0000, time=02.865526
+
+-----------------------------
+
+Epoch 20: train loss=1.4587, acc=0.9996, fr=0.0447, lr=0.0036, time=15.152621
+Epoch 20: valid loss=0.3512, acc=0.9021, fr=0.0522, mask=0.0000, time=02.989782
+
+-----------------------------
+
+Epoch 21: train loss=1.4583, acc=0.9999, fr=0.0448, lr=0.0025, time=15.140106
+Epoch 21: valid loss=0.3199, acc=0.9137, fr=0.0524, mask=0.0000, time=02.874116
+
+-----------------------------
+
+Epoch 22: train loss=1.4578, acc=0.9999, fr=0.0448, lr=0.0025, time=15.364034
+Epoch 22: valid loss=0.3265, acc=0.9047, fr=0.0523, mask=0.0000, time=02.875148
+
+-----------------------------
+
+Epoch 23: train loss=1.4575, acc=0.9998, fr=0.0450, lr=0.0018, time=15.295303
+Epoch 23: valid loss=0.3102, acc=0.9141, fr=0.0528, mask=0.0000, time=02.817536
+
+-----------------------------
+
+Epoch 24: train loss=1.4572, acc=1.0000, fr=0.0451, lr=0.0018, time=15.322281
+Epoch 24: valid loss=0.3004, acc=0.9109, fr=0.0525, mask=0.0000, time=02.921743
+
+-----------------------------
+
+Epoch 25: train loss=1.4575, acc=0.9999, fr=0.0450, lr=0.0012, time=15.420017
+Epoch 25: valid loss=0.3052, acc=0.9091, fr=0.0525, mask=0.0000, time=02.915090
+
+-----------------------------
+
+Epoch 26: train loss=1.4571, acc=0.9999, fr=0.0451, lr=0.0012, time=15.339457
+Epoch 26: valid loss=0.2946, acc=0.9166, fr=0.0529, mask=0.0000, time=02.866598
+
+Best model saved with valid acc=0.9165943287037036
+
+-----------------------------
+
+Epoch 27: train loss=1.4569, acc=0.9999, fr=0.0454, lr=0.0012, time=15.352058
+Epoch 27: valid loss=0.3049, acc=0.9118, fr=0.0531, mask=0.0000, time=02.906630
+
+-----------------------------
+
+Epoch 28: train loss=1.4568, acc=1.0000, fr=0.0454, lr=0.0012, time=15.184356
+Epoch 28: valid loss=0.3122, acc=0.9122, fr=0.0532, mask=0.0000, time=02.906938
+
+-----------------------------
+
+Epoch 29: train loss=1.4568, acc=1.0000, fr=0.0456, lr=0.0009, time=15.264363
+Epoch 29: valid loss=0.2957, acc=0.9083, fr=0.0533, mask=0.0000, time=02.892701
+
+-----------------------------
+
+Epoch 30: train loss=1.4568, acc=0.9999, fr=0.0456, lr=0.0009, time=15.208694
+Epoch 30: valid loss=0.2996, acc=0.9103, fr=0.0533, mask=0.0000, time=02.913899
+
+-----------------------------
+
+Epoch 31: train loss=1.4568, acc=1.0000, fr=0.0456, lr=0.0006, time=15.343103
+Epoch 31: valid loss=0.3000, acc=0.9106, fr=0.0532, mask=0.0000, time=02.882671
+
+-----------------------------
+
+Epoch 32: train loss=1.4565, acc=1.0000, fr=0.0456, lr=0.0006, time=15.477938
+Epoch 32: valid loss=0.3091, acc=0.9123, fr=0.0534, mask=0.0000, time=03.058769
+
+-----------------------------
+
+Epoch 33: train loss=1.4565, acc=1.0000, fr=0.0457, lr=0.0004, time=15.514870
+Epoch 33: valid loss=0.3105, acc=0.9128, fr=0.0534, mask=0.0000, time=03.047497
+
+-----------------------------
+
+Epoch 34: train loss=1.4567, acc=0.9999, fr=0.0457, lr=0.0004, time=15.506052
+Epoch 34: valid loss=0.3078, acc=0.9090, fr=0.0535, mask=0.0000, time=02.879303
+
+-----------------------------
+
+Epoch 35: train loss=1.4567, acc=1.0000, fr=0.0458, lr=0.0003, time=15.311666
+Epoch 35: valid loss=0.3084, acc=0.9127, fr=0.0535, mask=0.0000, time=02.834767
+
+-----------------------------
+
+Epoch 36: train loss=1.4565, acc=1.0000, fr=0.0458, lr=0.0003, time=15.223137
+Epoch 36: valid loss=0.3102, acc=0.9073, fr=0.0536, mask=0.0000, time=02.901598
+
+-----------------------------
+
+Epoch 37: train loss=1.4566, acc=0.9998, fr=0.0458, lr=0.0002, time=15.405035
+Epoch 37: valid loss=0.3066, acc=0.9122, fr=0.0535, mask=0.0000, time=02.916569
+
+-----------------------------
+
+Epoch 38: train loss=1.4565, acc=1.0000, fr=0.0458, lr=0.0002, time=15.244336
+Epoch 38: valid loss=0.3176, acc=0.9082, fr=0.0536, mask=0.0000, time=03.030242
+
+-----------------------------
+
+Epoch 39: train loss=1.4565, acc=1.0000, fr=0.0458, lr=0.0001, time=15.541208
+Epoch 39: valid loss=0.3070, acc=0.9094, fr=0.0536, mask=0.0000, time=02.885069
+
+-----------------------------
+
+Epoch 40: train loss=1.4564, acc=1.0000, fr=0.0459, lr=0.0001, time=15.480914
+Epoch 40: valid loss=0.2997, acc=0.9107, fr=0.0536, mask=0.0000, time=02.904693
+
+-----------------------------
+
+Epoch 41: train loss=1.4564, acc=1.0000, fr=0.0458, lr=0.0001, time=15.315361
+Epoch 41: valid loss=0.3155, acc=0.9068, fr=0.0536, mask=0.0000, time=02.919897
+
+-----------------------------
+
+Epoch 42: train loss=1.4564, acc=1.0000, fr=0.0458, lr=0.0001, time=15.226282
+Epoch 42: valid loss=0.3058, acc=0.9122, fr=0.0535, mask=0.0000, time=02.926301
+
+-----------------------------
+
+Epoch 43: train loss=1.4564, acc=1.0000, fr=0.0458, lr=0.0001, time=15.285990
+Epoch 43: valid loss=0.3145, acc=0.9080, fr=0.0535, mask=0.0000, time=02.996069
+
+-----------------------------
+
+Epoch 44: train loss=1.4565, acc=1.0000, fr=0.0458, lr=0.0001, time=15.385119
+Epoch 44: valid loss=0.3073, acc=0.9158, fr=0.0536, mask=0.0000, time=02.912792
+
+-----------------------------
+
+Epoch 45: train loss=1.4563, acc=1.0000, fr=0.0458, lr=0.0000, time=15.540954
+Epoch 45: valid loss=0.3034, acc=0.9116, fr=0.0535, mask=0.0000, time=02.912859
+
+-----------------------------
+
+Epoch 46: train loss=1.4567, acc=0.9996, fr=0.0458, lr=0.0000, time=15.287885
+Epoch 46: valid loss=0.3071, acc=0.9111, fr=0.0536, mask=0.0000, time=02.946167
+
+-----------------------------
+
+Epoch 47: train loss=1.4562, acc=1.0000, fr=0.0458, lr=0.0000, time=15.492571
+Epoch 47: valid loss=0.3022, acc=0.9098, fr=0.0535, mask=0.0000, time=02.962241
+
+-----------------------------
+
+Epoch 48: train loss=1.4562, acc=0.9999, fr=0.0458, lr=0.0000, time=15.494998
+Epoch 48: valid loss=0.3259, acc=0.9095, fr=0.0535, mask=0.0000, time=02.865065
+
+-----------------------------
+
+Epoch 49: train loss=1.4563, acc=0.9999, fr=0.0458, lr=0.0000, time=15.454152
+Epoch 49: valid loss=0.2943, acc=0.9118, fr=0.0536, mask=0.0000, time=02.954241
+
+-----------------------------
+
+Epoch 50: train loss=1.4564, acc=0.9999, fr=0.0458, lr=0.0000, time=15.365051
+Epoch 50: valid loss=0.3048, acc=0.9108, fr=0.0535, mask=0.0000, time=02.874596
+
+-----------------------------
+
+
+Best valid acc at epoch 26: 0.9165943287037036
+
+
+------ Training finished ------
+
+Loading best model, epoch=26, valid acc=0.9165943287037036
+
+------ Begin Testing ------
+
+Test loss=0.29583280980587007, acc=0.9070746527777779, mean act rate=0.05292384326457977
+
+-----------------------------
+
+
+This dataset uses the same split for validation and testing.
+
