@@ -496,7 +496,6 @@ class Experiment:
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
 
-            # Loading best model
             if self.save_best:
                 self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=self.device)
                 logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
@@ -640,8 +639,7 @@ class Experiment:
                 accs.append(np.mean((y == pred).detach().cpu().numpy()))
                 epoch_spike_rate += torch.mean(firing_rates)
 
-            valid_loss = np.mean(losses)
-            valid_acc = np.mean(accs)
+            valid_loss = np.mean(losses); valid_acc = np.mean(accs)
             epoch_spike_rate /= step
             elapsed = str(timedelta(seconds=time.time() - start))[5:]
             sparsity = 0
@@ -660,7 +658,6 @@ class Experiment:
         with torch.no_grad():
             self.net.eval()
             losses, accs, epoch_spike_rate = [], [], 0
-
             logging.info("\n------ Begin Testing ------\n")
             for step, (x, _, y) in enumerate(test_loader):
                 x += torch.rand_like(x) * self.noise_test
@@ -674,8 +671,7 @@ class Experiment:
                 accs.append(acc)
                 epoch_spike_rate += torch.mean(firing_rates)
 
-            test_loss = np.mean(losses)
-            test_acc = np.mean(accs)
+            test_loss = np.mean(losses); test_acc = np.mean(accs)
             epoch_spike_rate /= step
             logging.info(f"Test loss={test_loss}, acc={test_acc}, mean act rate={epoch_spike_rate}")
             logging.info("\n-----------------------------\n")
