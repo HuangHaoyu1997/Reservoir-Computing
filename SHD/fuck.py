@@ -20,49 +20,49 @@ logger = logging.getLogger(__name__)
 
 def add_training_options(parser):
     date = time.strftime("%Y-%m-%d-%H-%M-%S/", time.localtime(time.time()))[5:16]
-    parser.add_argument("--use_pretrained_model", type=bool,  default=False,            help="Whether to load a pretrained model or to create a new one.",)
-    parser.add_argument("--only_do_testing",      type=bool,  default=False,            help="If True, will skip training and only perform testing of the loaded model.",)
-    parser.add_argument("--load_exp_folder",      type=str,   default=None,             help="Path to experiment folder with a pretrained model to load. Note that the same path will be used to store the current experiment.",)
-    parser.add_argument("--new_exp_folder",       type=str,   default='./log/' + date,  help="Path to output folder to store experiment.",)
-    parser.add_argument("--dataset_name",         type=str,   default='shd',            help="Dataset name (shd, ssc, hd or sc).",)
-    parser.add_argument("--data_folder",          type=str,   default="./data/raw/",    help="Path to dataset folder.",)
-    parser.add_argument("--log_tofile",           type=bool,  default=True,             help="Whether to print experiment log in an dedicated file or directly inside the terminal.",)
-    parser.add_argument("--save_best",            type=bool,  default=True,             help="If True, the model from the epoch with the highest validation accuracy is saved, if False, no model is saved.",)
-    parser.add_argument("--batch_size",           type=int,   default=512,              help="Number of input examples inside a single batch.",)
-    parser.add_argument("--nb_epochs",            type=int,   default=50,               help="Number of training epochs (i.e. passes through the dataset).",)
-    parser.add_argument("--start_epoch",          type=int,   default=0,                help="Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.",)
-    parser.add_argument("--lr",                   type=float, default=1.5e-2,             help="Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",)
-    parser.add_argument("--scheduler_patience",   type=int,   default=1,                help="Number of epochs without progress before the learning rate gets decreased.",)
-    parser.add_argument("--scheduler_factor",     type=float, default=0.7,              help="Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.",)
-    parser.add_argument("--use_regularizers",     type=bool,  default=True,             help="Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.",)
-    parser.add_argument("--reg_factor",           type=float, default=0.5,              help="Factor that scales the loss value from the regularizers.",)
-    parser.add_argument("--reg_fmin",             type=float, default=0.01,             help="Lowest firing frequency value of spiking neurons for which there is no regularization loss.",)
-    parser.add_argument("--reg_fmax",             type=float, default=0.2,              help="Highest firing frequency value of spiking neurons for which there is no regularization loss.",)
-    parser.add_argument("--use_augm",             type=bool,  default=False,            help="Whether to use data augmentation or not. Only implemented for nonspiking HD and SC datasets.",)
-    parser.add_argument("--nb_steps",             type=int,   default=100,)
-    parser.add_argument("--trial",                type=int,   default=5,)
-    parser.add_argument("--seed",                 type=int,   default=-100,) # round(time.time())
-    parser.add_argument("--ckpt_freq",            type=int,   default=5,)
-    parser.add_argument("--threshold",            type=float, default=1.0,)
-    parser.add_argument("--date",                 type=str,   default=date,)
+    parser.add_argument("--use_pretrained_model", type=bool,   default=False,            help="Whether to load a pretrained model or to create a new one.",)
+    parser.add_argument("--only_do_testing",      type=bool,   default=False,            help="If True, will skip training and only perform testing of the loaded model.",)
+    parser.add_argument("--load_exp_folder",      type=str,    default=None,             help="Path to experiment folder with a pretrained model to load. Note that the same path will be used to store the current experiment.",)
+    parser.add_argument("--new_exp_folder",       type=str,    default='./log/' + date,  help="Path to output folder to store experiment.",)
+    parser.add_argument("--dataset_name",         type=str,    default='shd',            help="Dataset name (shd, ssc, hd or sc).",)
+    parser.add_argument("--data_folder",          type=str,    default="./data/raw/",    help="Path to dataset folder.",)
+    parser.add_argument("--log_tofile",           type=bool,   default=True,             help="Whether to print experiment log in an dedicated file or directly inside the terminal.",)
+    parser.add_argument("--save_best",            type=bool,   default=True,             help="If True, the model from the epoch with the highest validation accuracy is saved, if False, no model is saved.",)
+    parser.add_argument("--batch_size",           type=int,    default=512,              help="Number of input examples inside a single batch.",)
+    parser.add_argument("--nb_epochs",            type=int,    default=50,               help="Number of training epochs (i.e. passes through the dataset).",)
+    parser.add_argument("--start_epoch",          type=int,    default=0,                help="Epoch number to start training at. Will be 0 if no pretrained model is given. First epoch will be start_epoch+1.",)
+    parser.add_argument("--lr",                   type=float,  default=1.5e-2,             help="Initial learning rate for training. The default value of 0.01 is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",)
+    parser.add_argument("--scheduler_patience",   type=int,    default=1,                help="Number of epochs without progress before the learning rate gets decreased.",)
+    parser.add_argument("--scheduler_factor",     type=float,  default=0.7,              help="Factor between 0 and 1 by which the learning rate gets decreased when the scheduler patience is reached.",)
+    parser.add_argument("--use_regularizers",     type=bool,   default=True,             help="Whether to use regularizers in order to constrain the firing rates of spiking neurons within a given range.",)
+    parser.add_argument("--reg_factor",           type=float,  default=0.5,              help="Factor that scales the loss value from the regularizers.",)
+    parser.add_argument("--reg_fmin",             type=float,  default=0.01,             help="Lowest firing frequency value of spiking neurons for which there is no regularization loss.",)
+    parser.add_argument("--reg_fmax",             type=float,  default=0.2,              help="Highest firing frequency value of spiking neurons for which there is no regularization loss.",)
+    parser.add_argument("--use_augm",             type=bool,   default=False,            help="Whether to use data augmentation or not. Only implemented for nonspiking HD and SC datasets.",)
+    parser.add_argument("--nb_steps",             type=int,    default=50,)
+    parser.add_argument("--trial",                type=int,    default=5,)
+    parser.add_argument("--seed",                 type=int,    default=-100,) # round(time.time())
+    parser.add_argument("--ckpt_freq",            type=int,    default=5,)
+    parser.add_argument("--threshold",            type=float,  default=1.0,)
+    parser.add_argument("--date",                 type=str,    default=date,)
     
-    parser.add_argument("--model_type",        type=str,    default="RadLIF",    help="Type of ANN or SNN model.",)
-    parser.add_argument("--nb_layers",         type=int,    default=2,           help="Number of layers (including readout layer).",)
-    parser.add_argument("--nb_hiddens",        type=int,    default=1024,        help="Number of neurons in all hidden layers.",)
-    parser.add_argument("--pdrop",             type=float,  default=0.1,         help="Dropout rate, must be between 0 and 1.",)
-    parser.add_argument("--normalization",     type=str,    default="batchnorm", help="Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.",)
-    parser.add_argument("--use_bias",          type=bool,   default=False,       help="Whether to include trainable bias with feedforward weights.",)
-    parser.add_argument("--bidirectional",     type=bool,   default=False,       help="If True, a bidirectional model that scans the sequence in both directions is used, which doubles the size of feedforward matrices. ",)
-    parser.add_argument("--train_input",       type=bool,   default=True,)
-    parser.add_argument("--dropout",           type=float,  default=0.0,)
-    parser.add_argument("--dropout_stop",      type=float,  default=0.95,)
-    parser.add_argument("--dropout_stepping",  type=float,  default=0.0,)
-    parser.add_argument("--clustering",        type=bool,   default=False,)
-    parser.add_argument("--clustering_factor", type=list,   default=[1, 2.5],)
-    parser.add_argument("--cin_minmax",        type=list,   default=[0.01, 0.05],)
-    parser.add_argument("--cout_minmax",       type=list,   default=[0.05, 0.2],)
-    parser.add_argument("--nb_cluster",        type=int,    default=8,)
-    parser.add_argument("--noise_test",        type=float,  default=0.0,)
+    parser.add_argument("--model_type",           type=str,    default="RadLIF",    help="Type of ANN or SNN model.",)
+    parser.add_argument("--nb_layers",            type=int,    default=3,           help="Number of layers (including readout layer).",)
+    parser.add_argument("--nb_hiddens",           type=int,    default=1024,        help="Number of neurons in all hidden layers.",)
+    parser.add_argument("--pdrop",                type=float,  default=0.1,         help="Dropout rate, must be between 0 and 1.",)
+    parser.add_argument("--normalization",        type=str,    default="batchnorm", help="Type of normalization, Every string different from batchnorm and layernorm will result in no normalization.",)
+    parser.add_argument("--use_bias",             type=bool,   default=True,        help="Whether to include trainable bias with feedforward weights.",)
+    parser.add_argument("--bidirectional",        type=bool,   default=False,       help="If True, a bidirectional model that scans the sequence in both directions is used, which doubles the size of feedforward matrices. ",)
+    parser.add_argument("--train_input",          type=bool,   default=True,)
+    parser.add_argument("--dropout",              type=float,  default=0.0,)
+    parser.add_argument("--dropout_stop",         type=float,  default=0.95,)
+    parser.add_argument("--dropout_stepping",     type=float,  default=0.0,)
+    parser.add_argument("--clustering",           type=bool,   default=False,)
+    parser.add_argument("--clustering_factor",    type=list,   default=[1, 2.5],)
+    parser.add_argument("--cin_minmax",           type=list,   default=[0.01, 0.05],)
+    parser.add_argument("--cout_minmax",          type=list,   default=[0.05, 0.2],)
+    parser.add_argument("--nb_cluster",           type=int,    default=8,)
+    parser.add_argument("--noise_test",           type=float,  default=0.0,)
     
     
     return parser
@@ -72,6 +72,7 @@ def print_options(args):
         """
         Training Config
         ---------------
+        Date: {date}
         Use pretrained model: {use_pretrained_model}
         Only do testing: {only_do_testing}
         Load experiment folder: {load_exp_folder}
@@ -144,10 +145,8 @@ class SNN(nn.Module):
     It accepts input tensors formatted as (batch, time, feat). 
     The function returns the outputs of the last spiking or readout layer with shape (batch, time, feats) or (batch, feats) respectively, as well as the firing rates of all hidden neurons with shape (num_layers*feats).
     """
-
-    def __init__(self, input_shape, layer_sizes, neuron_type, threshold, dropout, normalization, use_bias, bidirectional, use_readout_layer, train_input):
+    def __init__(self, input_shape, layer_sizes, neuron_type, threshold, pdrop, normalization, use_bias, bidirectional, use_readout_layer, train_input, dropout):
         super().__init__()
-
         # Fixed parameters
         self.reshape = True if len(input_shape) > 3 else False
         self.input_size = float(torch.prod(torch.tensor(input_shape[2:])))
@@ -157,22 +156,21 @@ class SNN(nn.Module):
         self.num_outputs = layer_sizes[-1]
         self.neuron_type = neuron_type
         self.threshold = threshold
-        self.dropout = dropout
+        self.pdrop = pdrop
         self.normalization = normalization
         self.use_bias = use_bias
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
         self.train_input = train_input
+        self.dropout = dropout
         self.snn = self._init_layers()
 
     def _init_layers(self):
         snn = nn.ModuleList([])
         input_size = self.input_size
         snn_class = self.neuron_type + "Layer"
-
         if self.use_readout_layer: num_hidden_layers = self.num_layers - 1
         else:                      num_hidden_layers = self.num_layers
-
         for i in range(num_hidden_layers):
             snn.append(
                 globals()[snn_class](
@@ -180,11 +178,12 @@ class SNN(nn.Module):
                     hidden_size=self.layer_sizes[i],
                     batch_size=self.batch_size,
                     threshold=self.threshold,
-                    dropout=self.dropout,
+                    dropout=self.pdrop,
                     normalization=self.normalization,
                     use_bias=self.use_bias,
                     bidirectional=self.bidirectional,
-                    train_input=self.train_input
+                    train_input=self.train_input,
+                    dropout=self.dropout,
                 )
             )
             input_size = self.layer_sizes[i] * (1 + self.bidirectional)
@@ -221,17 +220,17 @@ class SNN(nn.Module):
 
 class RadLIFLayer(nn.Module):
     """A single layer of adaptive Leaky Integrate-and-Fire neurons with layer-wise recurrent connections (RadLIF)."""
-    def __init__(self, input_size, hidden_size, batch_size, threshold, dropout, normalization, use_bias, bidirectional, train_input):
+    def __init__(self, input_size, hidden_size, batch_size, threshold, pdrop, normalization, use_bias, bidirectional, train_input, dropout):
         super().__init__()
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
         self.batch_size = batch_size
         self.threshold = threshold
-        self.dropout = dropout
         self.normalization = normalization
         self.use_bias = use_bias
         self.bidirectional = bidirectional
         self.train_input = train_input
+        self.dropout = dropout
         self.batch_size = self.batch_size * (1 + self.bidirectional)
         self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
         self.beta_lim = [np.exp(-1 / 30), np.exp(-1 / 120)]
@@ -261,7 +260,7 @@ class RadLIFLayer(nn.Module):
         elif normalization == "layernorm":
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
-        self.drop = nn.Dropout(p=dropout)
+        self.drop = nn.Dropout(p=pdrop)
         
         if not self.train_input:
             for name, p in self.named_parameters():
@@ -278,7 +277,7 @@ class RadLIFLayer(nn.Module):
         if self.normalize:
             _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
             Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
-        s = self.mem_update(Wx) # s.shape=[batch, nb_steps, hid]
+        s = self.mem_update(Wx, mask) # s.shape=[batch, nb_steps, hid]
         if self.bidirectional: # Concatenate forward and backward sequences on feat dim
             s_f, s_b = s.chunk(2, dim=0)
             s_b = s_b.flip(1)
@@ -286,19 +285,17 @@ class RadLIFLayer(nn.Module):
         s = self.drop(s)
         return s
 
-    def mem_update(self, Wx):
-        device = Wx.device
-        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
-        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
-        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+    def mem_update(self, Wx, mask):
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(Wx.device)
+        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(Wx.device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(Wx.device)
         s = []
-
         # Bound values of the neuron parameters to plausible ranges
         alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
         beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
         a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
         b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
-        
+        if self.dropout > 0: self.V.weight.data = self.V.weight.data * mask.T
         V = self.V.weight.clone().fill_diagonal_(0)
         for t in range(Wx.shape[1]):
             wt = beta * wt + a * ut + b * st
@@ -314,7 +311,7 @@ class ReadoutLayer(nn.Module):
     membrane potential using a softmax function, instead of spikes.
     """
 
-    def __init__(self, input_size, hidden_size, batch_size, dropout, normalization="batchnorm", use_bias=False,):
+    def __init__(self, input_size, hidden_size, batch_size, dropout, normalization, use_bias,):
         super().__init__()
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
@@ -335,7 +332,6 @@ class ReadoutLayer(nn.Module):
         elif normalization == "layernorm":
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
-
         self.drop = nn.Dropout(p=dropout)
 
     def forward(self, x, mask):
@@ -347,9 +343,8 @@ class ReadoutLayer(nn.Module):
         return out
 
     def mem_update(self, Wx):
-        device = Wx.device
-        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
-        out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(Wx.device)
+        out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(Wx.device)
         alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1]) # Bound values of the neuron parameters to plausible ranges
         for t in range(Wx.shape[1]):
             ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
@@ -357,7 +352,7 @@ class ReadoutLayer(nn.Module):
         return out
 
 class SpikingDataset(Dataset):
-    def __init__(self, dataset_name, data_folder, split, nb_steps=100,):
+    def __init__(self, dataset_name, data_folder, split, nb_steps,):
         # Fixed parameters
         self.device = "cpu"  # to allow pin memory
         self.nb_steps = nb_steps
@@ -365,7 +360,6 @@ class SpikingDataset(Dataset):
         self.max_time = 1.4
         self.time_bins = np.linspace(0, self.max_time, num=self.nb_steps)
 
-        # Read data from h5py file
         filename = f"{data_folder}/{dataset_name}_{split}.h5"
         self.h5py_file = h5py.File(filename, "r")
         self.firing_times = self.h5py_file["spikes"]["times"]
@@ -413,6 +407,19 @@ def load_shd_or_ssc(dataset_name, data_folder, split, batch_size, nb_steps=100, 
     )
     return loader
 
+def init_mask(nb_hiddens, nb_cluster):
+    nb_per_cluster = int(args.nb_hiddens / args.nb_cluster)
+    a = torch.zeros((args.nb_hiddens, args.nb_hiddens), dtype=torch.int)
+    for i in range(args.nb_cluster): 
+        a[i*nb_per_cluster:(i+1)*nb_per_cluster, i*nb_per_cluster:(i+1)*nb_per_cluster] = 1.
+    invalid_zeros = 1-(a==1).sum().item()/args.nb_hiddens**2
+    if invalid_zeros < args.dropout:
+        b = (torch.rand(args.nb_hiddens, args.nb_hiddens) > (args.dropout-invalid_zeros)/(1-invalid_zeros)).int() * (1-torch.eye(args.nb_hiddens, args.nb_hiddens, dtype=int))
+        mask = a & b
+        mask += torch.eye(args.nb_hiddens, args.nb_hiddens, dtype=int)
+    else: mask = a
+    return mask
+
 class Experiment:
     def __init__(self, args):
         # New model config
@@ -449,6 +456,9 @@ class Experiment:
         self.train_input = args.train_input
         self.noise_test = args.noise_test
         self.seed = args.seed
+        self.dropout = args.dropout
+        self.nb_cluster = args.nb_cluster
+        self.nb_per_cluster = int(args.nb_hiddens / args.nb_cluster)
 
         self.set_seed(self.seed)
         self.init_exp_folders()
@@ -489,22 +499,22 @@ class Experiment:
                 best_epoch, best_acc = 0, 0
 
             logging.info("\n------ Begin training ------\n")
+            m1 = init_mask(self.nb_hiddens, self.nb_cluster); m2 = init_mask(self.nb_hiddens, self.nb_cluster)
+            # m1 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            # m2 = (torch.rand(config.hid, config.hid) > config.dropout).int() * (1-torch.eye(config.hid, config.hid)).int()
+            mask = [m1.float().to(self.device), m2.float().to(self.device), 0]
             for e in range(best_epoch + 1, best_epoch + self.nb_epochs + 1):
-                train_acc = self.train_one_epoch(e); train_accs.append(train_acc)
-                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc); valid_accs.append(best_acc)
+                train_acc = self.train_one_epoch(e, mask); train_accs.append(train_acc)
+                best_epoch, best_acc = self.valid_one_epoch(trial, e, mask, best_epoch, best_acc); valid_accs.append(best_acc)
 
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
-
-            if self.save_best:
-                self.net = torch.load(f"{self.checkpoint_dir}/best_model.pth", map_location=self.device)
-                logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
-            else:
-                logging.info("Cannot load best model because save_best option is disabled. Model from last epoch is used for testing.")
+            
+            self.net = torch.load(f"{self.checkpoint_dir}/best_model_{trial}_{best_acc}.pth", map_location=self.device)
+            logging.info(f"Loading best model, epoch={best_epoch}, valid acc={best_acc}")
 
         # Test trained model
-        if self.dataset_name == "ssc":
-            self.test_one_epoch(self.test_loader)
+        if self.dataset_name == "ssc": self.test_one_epoch(self.test_loader)
         else:
             self.test_one_epoch(self.valid_loader)
             logging.info("\nThis dataset uses the same split for validation and testing.\n")
@@ -577,12 +587,13 @@ class Experiment:
                 layer_sizes=layer_sizes,
                 neuron_type=self.model_type,
                 threshold=self.threshold,
-                dropout=self.pdrop,
+                pdrop=self.pdrop,
                 normalization=self.normalization,
                 use_bias=self.use_bias,
                 bidirectional=self.bidirectional,
                 use_readout_layer=True,
-                train_input=self.train_input
+                train_input=self.train_input,
+                dropout=self.dropout,
             ).to(self.device)
 
             logging.info(f"\nCreated new spiking model:\n {self.net}\n")
@@ -590,14 +601,14 @@ class Experiment:
         self.nb_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         logging.info(f"Total number of trainable parameters is {self.nb_params}")
 
-    def train_one_epoch(self, e):
+    def train_one_epoch(self, e, mask):
         start = time.time()
         self.net.train()
         losses, accs, epoch_spike_rate = [], [], 0
 
         for step, (x, _, y) in enumerate(self.train_loader):
             x = x.to(self.device); y = y.to(self.device)
-            output, firing_rates, all_spikes = self.net(x, [0,0,0])
+            output, firing_rates, all_spikes = self.net(x, mask)
             loss_val = self.loss_fn(output, y)
 
             epoch_spike_rate += torch.mean(firing_rates)
@@ -623,7 +634,7 @@ class Experiment:
         logging.info(f"Epoch {e}: train loss={train_loss:.4f}, acc={train_acc:.4f}, fr={epoch_spike_rate:.4f}, lr={current_lr:.4f}, time={elapsed}")
         return train_acc
 
-    def valid_one_epoch(self, e, best_epoch, best_acc):
+    def valid_one_epoch(self, trial, e, mask, best_epoch, best_acc):
         start = time.time()
         with torch.no_grad():
             self.net.eval()
@@ -631,7 +642,7 @@ class Experiment:
             for step, (x, _, y) in enumerate(self.valid_loader):
                 x += torch.rand_like(x) * self.noise_test
                 x = x.to(self.device); y = y.to(self.device)
-                output, firing_rates, all_spikes = self.net(x, [0,0,0])
+                output, firing_rates, all_spikes = self.net(x, mask)
                 loss_val = self.loss_fn(output, y)
                 losses.append(loss_val.item())
 
@@ -642,13 +653,13 @@ class Experiment:
             valid_loss = np.mean(losses); valid_acc = np.mean(accs)
             epoch_spike_rate /= step
             elapsed = str(timedelta(seconds=time.time() - start))[5:]
-            sparsity = 0
+            sparsity = ((mask[0]==0).sum().item()/self.nb_hiddens**2 + (mask[1]==0).sum().item()/self.nb_hiddens**2)/2
             logging.info(f"Epoch {e}: valid loss={valid_loss:.4f}, acc={valid_acc:.4f}, fr={epoch_spike_rate:.4f}, mask={sparsity:.4f}, time={elapsed}")
             self.scheduler.step(valid_acc)
 
             if valid_acc > best_acc:
                 best_acc = valid_acc; best_epoch = e
-                torch.save(self.net, f"{self.checkpoint_dir}/best_model_{valid_acc}.pth")
+                torch.save(self.net, f"{self.checkpoint_dir}/best_model_{trial}_{valid_acc}.pth")
                 logging.info(f"\nBest model saved with valid acc={valid_acc}")
 
             logging.info("\n-----------------------------\n")
