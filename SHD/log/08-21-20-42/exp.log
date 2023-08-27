@@ -1,0 +1,85 @@
+===== Exp configuration =====
+date:		08-21-20-42
+save_dir:		./log/08-21-20-42
+dataset_name:		shd
+data_folder:		./data/raw/
+input_dim:		700
+output_dim:		20
+nb_steps:		100
+trials:		5
+scheduler_patience:		5
+scheduler_factor:		0.7
+lens:		0.5
+gamma:		0.5
+gradient_type:		linear
+scale:		6.0
+hight:		0.15
+batch_size:		512
+nb_epochs:		100
+lr:		0.015
+weight_decay:		1e-05
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+fr_ent:		0.1
+seed:		1692621753
+ckpt_freq:		10
+threshold:		1.0
+smoothing:		0.1
+pdrop:		0.1
+normalization:		batchnorm
+train_input:		True
+nb_hiddens:		1024
+noise_test:		0.0
+device:		cuda:0
+
+Created new spiking model:
+ RC(
+  (W): Linear(in_features=700, out_features=1024, bias=True)
+  (V): Linear(in_features=1024, out_features=1024, bias=False)
+  (read): Linear(in_features=1024, out_features=20, bias=True)
+  (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (norm_read): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (drop): Dropout(p=0.1, inplace=False)
+)
+
+Total number of trainable parameters is 1793104
+
+**************  Trial 1  **************
+Epoch 0: cin|cout=0.001427|0.014118|9.8929
+Epoch 1: loss=18.6192|4.6103, acc=14.2349|8.3039, fr=0.5709, cin|cout=0.005705|0.027472|4.8157, lr=0.0150, time=11.590773
+-----------------------------
+
+Epoch 2: loss=11.7290|2.3537, acc=23.3570|39.0018, fr=0.3995, cin|cout=0.007331|0.031327|4.2733, lr=0.0150, time=10.915461
+-----------------------------
+
+Epoch 3: loss=9.6152|1.6360, acc=44.0167|54.6378, fr=0.3828, cin|cout=0.007838|0.032382|4.1317, lr=0.0150, time=10.254499
+-----------------------------
+
+Epoch 4: loss=8.7728|1.0697, acc=58.9382|69.2138, fr=0.3848, cin|cout=0.008038|0.032936|4.0976, lr=0.0150, time=09.811666
+-----------------------------
+
+Epoch 5: loss=8.3243|0.7405, acc=70.9416|77.2085, fr=0.3905, cin|cout=0.008155|0.033365|4.0912, lr=0.0150, time=10.679368
+-----------------------------
+
+Epoch 6: loss=8.1223|0.6141, acc=79.4017|81.2279, fr=0.3898, cin|cout=0.008278|0.033702|4.0714, lr=0.0150, time=10.655159
+-----------------------------
+
+Epoch 7: loss=8.0200|0.5542, acc=83.8156|83.0830, fr=0.3928, cin|cout=0.008384|0.034013|4.0568, lr=0.0150, time=09.734000
+-----------------------------
+
+Epoch 8: loss=7.8905|0.5004, acc=86.6233|86.0866, fr=0.3859, cin|cout=0.008429|0.034185|4.0555, lr=0.0150, time=10.191667
+
+Best model saved with valid acc=86.08657243816255
+-----------------------------
+
+Epoch 9: loss=7.6407|0.4727, acc=88.8916|86.7491, fr=0.3769, cin|cout=0.008448|0.034131|4.0400, lr=0.0150, time=09.985940
+
+Best model saved with valid acc=86.74911660777386
+-----------------------------
+
+Epoch 10: loss=6.9793|0.4754, acc=90.7675|87.1025, fr=0.3529, cin|cout=0.008506|0.034311|4.0339, lr=0.0150, time=11.006677
+
+Best model saved with valid acc=87.10247349823321
+-----------------------------
+

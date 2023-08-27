@@ -1,0 +1,62 @@
+===== Exp configuration =====
+date:		08-20-03-31
+save_dir:		./log/08-20-03-31
+dataset_name:		shd
+data_folder:		./data/raw/
+input_dim:		700
+output_dim:		20
+nb_steps:		100
+trials:		1
+scheduler_patience:		2
+scheduler_factor:		0.7
+batch_size:		512
+nb_epochs:		30
+lr:		0.015
+weight_decay:		1e-05
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+fr_ent:		0.1
+seed:		1692473474
+ckpt_freq:		10
+threshold:		1.0
+smoothing:		0.1
+pdrop:		0.1
+normalization:		batchnorm
+train_input:		True
+nb_hiddens:		1024
+noise_test:		0.0
+device:		cuda:0
+
+Created new spiking model:
+ RC(
+  (W): Linear(in_features=700, out_features=1024, bias=True)
+  (V): Linear(in_features=1024, out_features=1024, bias=False)
+  (read): Linear(in_features=1024, out_features=20, bias=True)
+  (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (norm_read): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (drop): Dropout(p=0.1, inplace=False)
+)
+
+Total number of trainable parameters is 1793104
+
+**************  Trial 1  **************
+Epoch 0: cin|cout=0.001395|0.015509|11.1169
+Epoch 1: loss=6.3671|5.9835, acc=30.4561|12.8975, fr=0.3456, cin|cout=0.007196|0.032626|4.5339, lr=0.0150, time=09.100807
+-----------------------------
+
+Epoch 2: loss=4.7887|1.6743, acc=31.4492|54.5936, fr=0.2969, cin|cout=0.010129|0.037708|3.7228, lr=0.0150, time=08.042598
+-----------------------------
+
+Epoch 3: loss=3.3501|1.0982, acc=64.0633|75.0442, fr=0.3371, cin|cout=0.011260|0.039000|3.4636, lr=0.0150, time=08.069326
+-----------------------------
+
+Epoch 4: loss=2.9936|0.9113, acc=76.6920|77.8269, fr=0.3465, cin|cout=0.011557|0.039317|3.4021, lr=0.0150, time=08.022615
+-----------------------------
+
+Epoch 5: loss=2.7643|0.9265, acc=82.8225|77.5177, fr=0.3454, cin|cout=0.011671|0.039507|3.3850, lr=0.0150, time=08.135739
+-----------------------------
+
+Epoch 6: loss=2.6992|0.8086, acc=87.1383|79.7703, fr=0.3446, cin|cout=0.011716|0.039549|3.3755, lr=0.0150, time=08.174733
+-----------------------------
+

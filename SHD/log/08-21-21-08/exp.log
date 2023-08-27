@@ -1,0 +1,63 @@
+===== Exp configuration =====
+date:		08-21-21-08
+save_dir:		./log/08-21-21-08
+dataset_name:		shd
+data_folder:		./data/raw/
+input_dim:		700
+output_dim:		20
+nb_steps:		100
+trials:		5
+scheduler_patience:		5
+scheduler_factor:		0.7
+lens:		0.5
+gamma:		0.5
+gradient_type:		linear
+scale:		6.0
+hight:		0.15
+batch_size:		512
+nb_epochs:		100
+lr:		0.015
+weight_decay:		1e-05
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+fr_ent:		0.1
+seed:		1692623321
+ckpt_freq:		10
+threshold:		1.0
+smoothing:		0.1
+pdrop:		0.1
+normalization:		batchnorm
+train_input:		True
+nb_hiddens:		1024
+noise_test:		0.0
+device:		cuda:0
+
+Created new spiking model:
+ RC(
+  (W): Linear(in_features=700, out_features=1024, bias=True)
+  (V): Linear(in_features=1024, out_features=1024, bias=False)
+  (read): Linear(in_features=1024, out_features=20, bias=True)
+  (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (norm_read): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (drop): Dropout(p=0.1, inplace=False)
+)
+
+Total number of trainable parameters is 1793104
+
+**************  Trial 1  **************
+Epoch 0: cin|cout=0.001399|0.014843|10.6101
+-----------------------------
+
+Epoch 1: loss=14.6931|3.0322, acc=14.4311|20.9806, fr=0.4627, cin|cout=0.005693|0.027057|4.7525, lr=0.0150, time=13.784295
+-----------------------------
+
+Epoch 2: loss=9.1024|1.6475, acc=29.3771|51.7226, fr=0.3871, cin|cout=0.007361|0.030209|4.1042, lr=0.0150, time=14.646971
+-----------------------------
+
+Epoch 3: loss=7.5208|1.0680, acc=53.0652|67.7562, fr=0.3964, cin|cout=0.007801|0.031065|3.9823, lr=0.0150, time=14.603447
+-----------------------------
+
+Epoch 4: loss=7.0479|0.9048, acc=64.6641|70.4505, fr=0.4034, cin|cout=0.007953|0.031181|3.9209, lr=0.0150, time=16.049829
+-----------------------------
+

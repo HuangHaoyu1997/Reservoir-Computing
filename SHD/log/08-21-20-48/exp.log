@@ -1,0 +1,109 @@
+===== Exp configuration =====
+date:		08-21-20-48
+save_dir:		./log/08-21-20-48
+dataset_name:		shd
+data_folder:		./data/raw/
+input_dim:		700
+output_dim:		20
+nb_steps:		100
+trials:		5
+scheduler_patience:		5
+scheduler_factor:		0.7
+batch_size:		512
+nb_epochs:		100
+lr:		0.015
+weight_decay:		1e-05
+reg_factor:		0.5
+reg_fmin:		0.01
+reg_fmax:		0.1
+fr_ent:		0.1
+seed:		1692622105
+ckpt_freq:		10
+threshold:		1.0
+smoothing:		0.1
+pdrop:		0.1
+normalization:		batchnorm
+train_input:		True
+nb_hiddens:		1024
+noise_test:		0.0
+device:		cuda:0
+
+Created new spiking model:
+ RC(
+  (W): Linear(in_features=700, out_features=1024, bias=True)
+  (V): Linear(in_features=1024, out_features=1024, bias=False)
+  (read): Linear(in_features=1024, out_features=20, bias=True)
+  (norm): BatchNorm1d(1024, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (norm_read): BatchNorm1d(20, eps=1e-05, momentum=0.05, affine=True, track_running_stats=True)
+  (drop): Dropout(p=0.1, inplace=False)
+)
+
+Total number of trainable parameters is 1793104
+
+**************  Trial 1  **************
+Epoch 0: cin|cout=0.001433|0.013929|9.7211
+Epoch 1: loss=7.7329|3.2728, acc=28.4085|31.1837, fr=0.3898, cin|cout=0.006733|0.030353|4.5078, lr=0.0150, time=13.180268
+-----------------------------
+
+Epoch 2: loss=4.2862|1.2773, acc=36.2187|65.7686, fr=0.3016, cin|cout=0.009315|0.034790|3.7349, lr=0.0150, time=11.545751
+-----------------------------
+
+Epoch 3: loss=2.9901|0.6250, acc=70.7700|80.9187, fr=0.3333, cin|cout=0.010232|0.036275|3.5453, lr=0.0150, time=12.208256
+-----------------------------
+
+Epoch 4: loss=2.6685|0.4884, acc=83.5704|85.7774, fr=0.3662, cin|cout=0.010514|0.036809|3.5010, lr=0.0150, time=11.251698
+
+Best model saved with valid acc=85.7773851590106
+-----------------------------
+
+Epoch 5: loss=2.5076|0.4210, acc=89.7744|87.5883, fr=0.3640, cin|cout=0.010612|0.037202|3.5057, lr=0.0150, time=10.545075
+
+Best model saved with valid acc=87.58833922261483
+-----------------------------
+
+Epoch 6: loss=2.4264|0.4868, acc=93.4527|86.5724, fr=0.3644, cin|cout=0.010674|0.037584|3.5211, lr=0.0150, time=11.493148
+-----------------------------
+
+Epoch 7: loss=2.3824|0.3987, acc=95.3041|90.1060, fr=0.3649, cin|cout=0.010721|0.037838|3.5292, lr=0.0150, time=11.484260
+
+Best model saved with valid acc=90.10600706713781
+-----------------------------
+
+Epoch 8: loss=2.3392|0.3803, acc=97.0696|91.4311, fr=0.3698, cin|cout=0.010752|0.037976|3.5320, lr=0.0150, time=11.706708
+
+Best model saved with valid acc=91.43109540636043
+-----------------------------
+
+Epoch 9: loss=2.3118|0.4049, acc=97.8298|90.9452, fr=0.3776, cin|cout=0.010782|0.038038|3.5279, lr=0.0150, time=11.165908
+-----------------------------
+
+Epoch 10: loss=2.2910|0.3987, acc=98.3816|90.5919, fr=0.3743, cin|cout=0.010818|0.038025|3.5150, lr=0.0150, time=11.268903
+-----------------------------
+
+Epoch 11: loss=2.2772|0.3993, acc=98.7862|92.0495, fr=0.3729, cin|cout=0.010849|0.037907|3.4942, lr=0.0150, time=11.033462
+
+Best model saved with valid acc=92.04946996466431
+-----------------------------
+
+Epoch 12: loss=2.2689|0.3974, acc=99.1540|91.7403, fr=0.3733, cin|cout=0.010874|0.037916|3.4869, lr=0.0150, time=11.362973
+-----------------------------
+
+Epoch 13: loss=2.2487|0.3959, acc=99.5586|91.9170, fr=0.3705, cin|cout=0.010882|0.037960|3.4882, lr=0.0150, time=11.746483
+-----------------------------
+
+Epoch 14: loss=2.2379|0.3834, acc=99.6199|92.4912, fr=0.3755, cin|cout=0.010892|0.037989|3.4877, lr=0.0150, time=11.406432
+
+Best model saved with valid acc=92.49116607773851
+-----------------------------
+
+Epoch 15: loss=2.2358|0.3994, acc=99.7303|92.3145, fr=0.3809, cin|cout=0.010910|0.037999|3.4829, lr=0.0150, time=13.111393
+-----------------------------
+
+Epoch 16: loss=2.2287|0.4280, acc=99.7057|92.6237, fr=0.3799, cin|cout=0.010918|0.038068|3.4868, lr=0.0150, time=13.008471
+
+Best model saved with valid acc=92.62367491166077
+-----------------------------
+
+Epoch 17: loss=2.2180|0.4029, acc=99.8897|92.6237, fr=0.3782, cin|cout=0.010938|0.038103|3.4836, lr=0.0150, time=12.624928
+-----------------------------
+
